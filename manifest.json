@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "LinkedIn Auto-Note Connect",
+  "short_name": "Auto-Note",
+  "version": "1.4.0",
+  "description": "Auto-opens 'Add a note' on Connect and inserts a personalized template; also hooks 'Message' to insert your message with optional auto-send.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["storage", "activeTab", "alarms", "downloads"],
+  "host_permissions": ["https://www.linkedin.com/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/in/*",
+        "https://www.linkedin.com/search/results/people/*",
+        "https://www.linkedin.com/mynetwork/*",
+        "https://www.linkedin.com/messaging/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options.html",
+  "action": { 
+    "default_title": "Auto-Note Connect", 
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "commands": {
+    "open-note": {
+      "suggested_key": { "default": "Ctrl+Shift+N", "mac": "Command+Shift+N" },
+      "description": "Open Add a note and insert template"
+    },
+    "open-message": {
+      "suggested_key": { "default": "Ctrl+Shift+M", "mac": "Command+Shift+M" },
+      "description": "Open Message composer and insert template"
+    }
+  }
+}

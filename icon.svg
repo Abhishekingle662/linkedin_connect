@@ -1,0 +1,24 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="#0A66C2" stroke="#ffffff" stroke-width="2"/>
+  
+  <!-- LinkedIn-style connection nodes -->
+  <circle cx="35" cy="45" r="8" fill="#ffffff"/>
+  <circle cx="64" cy="35" r="8" fill="#ffffff"/>
+  <circle cx="93" cy="45" r="8" fill="#ffffff"/>
+  <circle cx="45" cy="75" r="8" fill="#ffffff"/>
+  <circle cx="83" cy="75" r="8" fill="#ffffff"/>
+  <circle cx="64" cy="95" r="8" fill="#ffffff"/>
+  
+  <!-- Connection lines -->
+  <line x1="35" y1="45" x2="64" y2="35" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <line x1="64" y1="35" x2="93" y2="45" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <line x1="35" y1="45" x2="45" y2="75" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <line x1="93" y1="45" x2="83" y2="75" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <line x1="45" y1="75" x2="64" y2="95" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <line x1="83" y1="75" x2="64" y2="95" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <line x1="45" y1="75" x2="83" y2="75" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Automation symbol (lightning bolt) -->
+  <path d="M58 50 L66 50 L62 58 L70 58 L66 70 L58 70 L62 62 L54 62 Z" fill="#FFD700" stroke="#0A66C2" stroke-width="1"/>
+</svg>

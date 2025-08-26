@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LinkedIn Auto-Note</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      body { 
+        min-width: 320px; 
+        max-width: 400px; 
+      }
+      .wrap { 
+        padding: var(--space-lg); 
+      }
+      .card { 
+        padding: var(--space-lg); 
+        margin-bottom: var(--space-md); 
+      }
+      h1 { 
+        font-size: var(--font-size-xl); 
+        margin-bottom: var(--space-lg); 
+      }
+      h2 { 
+        font-size: var(--font-size-lg); 
+        margin-bottom: var(--space-md); 
+      }
+      .badge { 
+        margin-left: var(--space-sm); 
+      }
+      .quick-action {
+        width: 100%;
+        margin-top: var(--space-sm);
+        font-size: var(--font-size-sm);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <header>
+        <h1>Auto-Note</h1>
+      </header>
+      
+      <section class="card">
+        <h2>Connection Requests</h2>
+        <div class="form-group">
+          <label class="row">
+            <span>Enable connection automation</span>
+            <input type="checkbox" id="enabled" />
+          </label>
+          <label class="row">
+            <span>Auto-send requests</span>
+            <input type="checkbox" id="autoSend" />
+          </label>
+        </div>
+        <div class="row gap">
+          <button id="openOptions" class="ghost" style="flex: 1;">Settings</button>
+          <button id="hotkeyNote" class="quick-action" style="flex: 2;">Open Note (Ctrl+Shift+N)</button>
+        </div>
+      </section>
+      
+      <section class="card">
+        <h2>Direct Messages</h2>
+        <div class="form-group">
+          <label class="row">
+            <span>Enable message flow</span>
+            <input type="checkbox" id="messageFlowEnabled" />
+          </label>
+          <label class="row">
+            <span>Auto-send messages</span>
+            <input type="checkbox" id="messageAutoSend" />
+          </label>
+        </div>
+        <button id="hotkeyMsg" class="quick-action">Open Message (Ctrl+Shift+M)</button>
+      </section>
+      
+      <section class="card">
+        <h2>
+          Activity
+          <span id="badge" class="badge" style="display: none;"></span>
+        </h2>
+        <pre id="stats" class="preview" style="min-height: 40px; font-size: var(--font-size-xs);">Loading activity data...</pre>
+      </section>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
