@@ -95,13 +95,59 @@
   }
 
   function extractProfileContext() {
-    const headline = textOf('main [class*="headline"], .entity-result__primary-subtitle');
+    // Try multiple selectors for headline with more comprehensive LinkedIn selectors
+    const headlineSelectors = [
+      'main [class*="headline"]',
+      '.entity-result__primary-subtitle',
+      '.pv-text-details__left-panel h2',
+      '.text-body-medium.break-words',
+      '.entity-result__summary',
+      '[data-field="headline"]',
+      '.pv-entity__summary-info h2',
+      '.pv-top-card--list-bullet .text-body-medium',
+      '.pv-entity__summary-info .text-body-medium',
+      '.pv-top-card .text-body-medium',
+      '.artdeco-entity-lockup__subtitle',
+      '.entity-result__content .text-body-small'
+    ];
+    
+    let headline = '';
+    for (const selector of headlineSelectors) {
+      headline = textOf(selector);
+      if (headline) break;
+    }
+    
+    // Fallback: try to find headline near the name
+    if (!headline) {
+      const nameElement = document.querySelector('main h1, .pv-text-details__left-panel h1, .entity-result__title a, .pv-top-card__name');
+      if (nameElement) {
+        const parent = nameElement.closest('.pv-text-details__left-panel, .entity-result__item, .entity-result__content, .pv-top-card, .pv-entity__summary-info');
+        if (parent) {
+          const headlineEl = parent.querySelector('.text-body-medium, .entity-result__primary-subtitle, .pv-entity__summary-info h2, .break-words, .artdeco-entity-lockup__subtitle');
+          headline = clean(headlineEl?.textContent || '');
+        }
+      }
+    }
+    
+    // Additional fallback: look for any element that might contain professional title
+    if (!headline) {
+      const possibleHeadlines = document.querySelectorAll('.text-body-medium, .entity-result__primary-subtitle, .break-words, .artdeco-entity-lockup__subtitle');
+      for (const el of possibleHeadlines) {
+        const text = clean(el.textContent || '');
+        if (text && text.length > 10 && text.length < 200 && (text.includes('at ') || text.includes('Engineer') || text.includes('Manager') || text.includes('Director') || text.includes('Analyst') || text.includes('Developer') || text.includes('Specialist'))) {
+          headline = text;
+          break;
+        }
+      }
+    }
+    
     const location = textOf('main [class*="subline-level-2"], .entity-result__secondary-subtitle');
     const expLine = textOf('section[id*="experience"] li div[dir="ltr"], .entity-result__summary-info');
     const school = textOf('section[id*="education"] li div[dir="ltr"]');
     const mutualCount = textOf('[data-test-mutuals-count], .entity-result__simple-insight-text');
     const lastCompany = (/(?: at | @ )([^•|,]+)/i.exec(expLine) || [])[1]?.trim() || '';
     const role = (/^(.*?)(?: at | @ )/.exec(expLine) || [])[1]?.trim() || '';
+    console.log('[AutoNote] Extracted headline:', headline); // Debug log
     return { headline, location, lastCompany, role, school, mutualCount };
   }
 
@@ -394,6 +440,7 @@
   // Lead log
   function currentProfileUrl(){ return location.href.split('?')[0]; }
   async function saveLead(entry){
+    console.log('[AutoNote] Saving lead:', entry); // Debug log
     const { leads = [] } = await chrome.storage.local.get('leads');
     leads.push(entry); await chrome.storage.local.set({ leads });
   }
@@ -427,7 +474,7 @@
   // Offer quick template switcher for notes
   injectNoteHelper(textarea, ctx);
       if (variant) chrome.runtime.sendMessage({ type: 'metrics:bump', key: `insert_${variant}` });
-      await saveLead({ name: firstName, url: currentProfileUrl(), company, variant: variant || 'base', ts: Date.now(), mode: 'connect' });
+      await saveLead({ name: firstName, url: currentProfileUrl(), company, headline: ctx.headline, ts: Date.now() });
       if (settings.autoSend) {
         await new Promise(r => setTimeout(r, 200));
         const modal = document.querySelector('div[role="dialog"], .artdeco-modal') || document;
@@ -453,9 +500,9 @@
       const composer = await ensureMessageComposerOpen(button);
       const msg = fillTemplate(settings.messageTemplate, ctx);
       insertIntoComposer(composer, msg);
-      chrome.runtime.sendMessage({ type: 'metrics:bump', key: 'message_insert' });
-      await saveLead({ name: firstName, url: currentProfileUrl(), company, variant: 'message', ts: Date.now(), mode: 'message' });
       injectComposerHelper(composer, () => fillTemplate(settings.messageTemplate, { firstName, company, ...extractProfileContext() }));
+      chrome.runtime.sendMessage({ type: 'metrics:bump', key: 'message_insert' });
+      await saveLead({ name: firstName, url: currentProfileUrl(), company, headline: ctx.headline, ts: Date.now() });
 
       if (settings.messageAutoSend) {
         await new Promise(r => setTimeout(r, 200));

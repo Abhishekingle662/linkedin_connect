@@ -173,7 +173,7 @@ function renderPreview(){
 
 $('export').addEventListener('click', async () => {
   const { leads = [] } = await chrome.storage.local.get('leads');
-  const csv = ['name,url,company,variant,mode,timestamp', ...leads.map(l => `${JSON.stringify(l.name)},${l.url},${JSON.stringify(l.company)},${l.variant},${l.mode||''},${new Date(l.ts).toISOString()}`)].join('\n');
+  const csv = ['name,url,company,headline,timestamp', ...leads.map(l => `${JSON.stringify(l.name)},${l.url},${JSON.stringify(l.company)},${JSON.stringify(l.headline || '')},${new Date(l.ts).toISOString()}`)].join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   chrome.downloads.download({ url, filename: 'leads.csv', saveAs: true });

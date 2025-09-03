@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "LinkedIn Auto-Note Connect",
   "short_name": "Auto-Note",
-  "version": "1.4.0",
+  "version": "1.5.1",
   "description": "Auto-opens 'Add a note' on Connect and inserts a personalized template; also hooks 'Message' to insert your message with optional auto-send.",
   "icons": {
     "16": "icons/icon16.png",
