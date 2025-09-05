@@ -22,6 +22,22 @@
 
   let settings = { ...DEFAULTS };
 
+  // CK 0.1% outreach templates
+  const CK_TEMPLATES = {
+    connectA: `Hey {firstName}, LOVE what you’re building at {company}. Would love to connect and stay in touch. ~ CK`,
+    connectB: `Hey {firstName}, I’m XX,
+- 3+ years in data/software
+- BS/MS in XX
+- Expertise in [challenge most relevant to them]
+
+I’m quite interested in X role.
+
+fancy a quick chat this week?
+~ CK`,
+    messageA: `Thanks for connecting, {firstName}! I’m working on [X] and thought it could be relevant to what you’re building at {company}. Happy to share a quick idea if useful.`,
+    messageB: `Appreciate the connect, {firstName}! Curious — what’s keeping you busy these days at {company}?`
+  };
+
   // —— Utils ——
   const log = (...args) => console.debug('[AutoNote]', ...args);
   const debounce = (fn, wait) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), wait); }; };
@@ -232,6 +248,7 @@
       <span style="color:#fff;align-self:center;">Template:</span>
       <button data-act="cycle">Default</button>
   <button data-act="randomRecruiter" title="Insert a random recruiter template">Random Recruiter</button>
+  <button data-act="ckNote" title="Insert CK 0.1% template (toggles A/B)">0.1% A</button>
       <button data-act="replace">Replace</button>
       <button data-act="replaceSend">Replace & Send</button>
     `;
@@ -251,8 +268,10 @@
         if (body) options.push({ key:`custom${idx+1}`, label:title || `Custom ${idx+1}`, get: () => body });
       });
     }
-    let idx = 0;
+  let idx = 0;
+  let ckIdxNote = 0; // 0 => A, 1 => B
     const cycleBtn = bar.querySelector('button[data-act="cycle"]');
+  const ckNoteBtn = bar.querySelector('button[data-act="ckNote"]');
     const updateLabel = () => { cycleBtn.textContent = options[idx]?.label || 'Default'; };
     updateLabel();
 
@@ -261,6 +280,19 @@
       const act = e.target.getAttribute('data-act');
       if (!act) return;
       if (act === 'cycle') { idx = (idx + 1) % options.length; updateLabel(); return; }
+      if (act === 'ckNote') {
+        const tpl = ckIdxNote === 0 ? CK_TEMPLATES.connectA : CK_TEMPLATES.connectB;
+        const msg = capLinkedInLimit(fillTemplate(tpl, ctx));
+        try {
+          textarea.focus();
+          textarea.value = msg;
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+          textarea.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch {}
+        ckIdxNote = (ckIdxNote + 1) % 2;
+        if (ckNoteBtn) ckNoteBtn.textContent = `0.1% ${ckIdxNote === 0 ? 'A' : 'B'}`;
+        return;
+      }
       if (act === 'randomRecruiter') {
         const list = (Array.isArray(settings.recruiterTemplates) && settings.recruiterTemplates.length)
           ? settings.recruiterTemplates
@@ -364,6 +396,7 @@
       <button data-act="attach">Attach file</button>
       <span style="color:#fff;align-self:center;margin-left:8px;">Template:</span>
       <button data-act="cycle" title="Switch template">Message</button>
+  <button data-act="ckMsg" title="Insert CK 0.1% template (toggles A/B)">0.1% A</button>
       <button data-act="insertSelected" title="Insert selected template">Insert Selected</button>
       <select data-act="followSel" style="margin-left:8px;background:#0a66c2;color:#fff;border:0;border-radius:8px;padding:6px;">
         <option value="">Follow-up…</option>
@@ -390,9 +423,11 @@
         if (body) templateOptions.push({ key: `custom${idx+1}`, label: title || `Custom ${idx+1}`, get: () => body });
       });
     }
-    let currentIdx = 0;
+  let currentIdx = 0;
+  let ckIdxMsg = 0; // 0 => A, 1 => B
     const getSelectedTemplateText = () => templateOptions[currentIdx]?.get?.() || settings.messageTemplate;
     const cycleBtn = bar.querySelector('button[data-act="cycle"]');
+  const ckMsgBtn = bar.querySelector('button[data-act="ckMsg"]');
     const updateCycleLabel = () => { cycleBtn.textContent = templateOptions[currentIdx]?.label || 'Message'; };
     updateCycleLabel();
 
@@ -402,6 +437,14 @@
       if (!act) return;
       const ctxMsg = getMessage();
       const selectedMsg = fillTemplate(getSelectedTemplateText(), { ...extractProfileContext(), firstName: extractFirstNameNear(composer), company: extractCompanyNear(composer) });
+      if (act === 'ckMsg') {
+        const tpl = ckIdxMsg === 0 ? CK_TEMPLATES.messageA : CK_TEMPLATES.messageB;
+        const filled = fillTemplate(tpl, { ...extractProfileContext(), firstName: extractFirstNameNear(composer), company: extractCompanyNear(composer) });
+        insertIntoComposer(composer, filled);
+        ckIdxMsg = (ckIdxMsg + 1) % 2;
+        if (ckMsgBtn) ckMsgBtn.textContent = `0.1% ${ckIdxMsg === 0 ? 'A' : 'B'}`;
+        return;
+      }
       if (act === 'insert' || act === 'send') {
         insertIntoComposer(composer, ctxMsg);
         if (act === 'send' && settings.messageAutoSend) {
