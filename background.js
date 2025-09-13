@@ -9,7 +9,6 @@ const DEFAULTS = {
     "Hi {firstName}, I’m a recent CS grad passionate about scalable web & mobile systems. I’d love to connect and learn more about opportunities where I can contribute and grow.",
     "Hello {firstName}, I recently graduated in CS and have hands-on experience building production-level web & mobile apps. Excited to connect and stay on your radar for open roles.",
     "Hi {firstName}, I’m a recent grad with experience creating scalable systems in web & mobile. Looking forward to connecting and exploring roles where I can bring value.",
-    "Hello {firstName}, I just graduated in CS and have built scalable web & mobile applications. I’d be happy to connect and learn more about roles you’re hiring for."
   ],
   // Message mode
   messageFlowEnabled: true,

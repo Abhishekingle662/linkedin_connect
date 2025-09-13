@@ -8,7 +8,6 @@ const DEFAULTS = {
     "Hi {firstName}, I’m a recent CS grad passionate about scalable web & mobile systems. I’d love to connect and learn more about opportunities where I can contribute and grow.",
     "Hello {firstName}, I recently graduated in CS and have hands-on experience building production-level web & mobile apps. Excited to connect and stay on your radar for open roles.",
     "Hi {firstName}, I’m a recent grad with experience creating scalable systems in web & mobile. Looking forward to connecting and exploring roles where I can bring value.",
-    "Hello {firstName}, I just graduated in CS and have built scalable web & mobile applications. I’d be happy to connect and learn more about roles you’re hiring for."
   ],
   // Which template to use for Connect by default
   defaultConnectTemplate: 'alumni',
@@ -41,8 +40,8 @@ async function load(){
   $('delayMs').value = cfg.delayMs;
   $('jitterMaxMs').value = cfg.jitterMaxMs;
   $('autoSend').checked = cfg.autoSend;
-  // Load recruiter templates into the 4 fields
-  for (let i=1; i<=4; i++) {
+  // Load recruiter templates into the 3 fields
+  for (let i=1; i<=3; i++) {
     const el = document.getElementById(`recruiterTpl${i}`);
     if (el) el.value = (cfg.recruiterTemplates?.[i-1]) || DEFAULTS.recruiterTemplates[i-1];
   }
@@ -93,7 +92,7 @@ async function save(){
   if (document.getElementById('alumniTemplate')) cfg.alumniTemplate = $('alumniTemplate').value.trim();
   // Save recruiter templates
   cfg.recruiterTemplates = [];
-  for (let i=1; i<=4; i++) {
+  for (let i=1; i<=3; i++) {
     const el = document.getElementById(`recruiterTpl${i}`);
     if (el) cfg.recruiterTemplates.push(el.value.trim());
   }

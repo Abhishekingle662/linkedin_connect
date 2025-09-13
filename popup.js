@@ -23,7 +23,7 @@ async function loadMetrics(){
       $('stats').textContent = JSON.stringify(m, null, 2);
       const total = Object.values(m).reduce((a,b)=>a+Number(b||0),0);
       if (total > 0) {
-        $('badge').textContent = `${total} actions`;
+        $('badge').textContent = `Top 0.1%`;
         $('badge').style.display = 'inline-flex';
       }
     } else {
