@@ -74,5 +74,6 @@ chrome.commands.onCommand.addListener((cmd) => {
     if (!tabs[0]) return;
     if (cmd === 'open-note') chrome.tabs.sendMessage(tabs[0].id, { type: 'openNote' });
     if (cmd === 'open-message') chrome.tabs.sendMessage(tabs[0].id, { type: 'openMessage' });
+    if (cmd === 'open-hiring-finder') chrome.tabs.sendMessage(tabs[0].id, { type: 'openHiringFinder' });
   });
 });

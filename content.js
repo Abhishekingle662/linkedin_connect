@@ -557,12 +557,645 @@ fancy a quick chat this week?
     } catch(e){ log('handleMessage error', e); toast("Couldn't handle message"); }
   }
 
+  // —— Job Posting Feature ——
+  function isJobPostingPage() {
+    const hostname = location.hostname.toLowerCase();
+    const pathname = location.pathname.toLowerCase();
+    
+    return (
+      // LinkedIn job pages
+      (hostname.includes('linkedin.com') && (pathname.includes('/jobs/view/') || pathname.includes('/jobs/search/'))) ||
+      
+      // Greenhouse job pages
+      hostname.includes('greenhouse.io') ||
+      
+      // Ashby job pages (jobs.ashbyhq.com/company/job-id pattern)
+      (hostname === 'jobs.ashbyhq.com' && pathname.match(/^\/[^\/]+\/[^\/]+$/)) ||
+      hostname.includes('ashbyhq.com') || 
+      (hostname.endsWith('.ashbyhq.com')) ||
+      
+      // Wellfound/AngelList job pages
+      hostname.includes('wellfound.com') ||
+      hostname.includes('angel.co') ||
+      
+      // Lever job pages
+      hostname.includes('lever.co')
+    );
+  }
+
+  function getJobPortal() {
+    if (location.hostname.includes('linkedin.com')) return 'linkedin';
+    if (location.hostname.includes('greenhouse.io')) return 'greenhouse';
+    if (location.hostname.includes('ashbyhq.com') || location.hostname.includes('.ashbyhq.com')) return 'ashby';
+    if (location.hostname.includes('wellfound.com') || location.hostname.includes('angel.co')) return 'wellfound';
+    if (location.hostname.includes('lever.co')) return 'lever';
+    return 'unknown';
+  }
+
+  // Helper function to capitalize words
+  function capitalizeWords(str) {
+    if (!str) return 'Company';
+    return str.replace(/\b\w/g, l => l.toUpperCase());
+  }
+
+  // Helper function to extract company name from Ashby pages
+  function extractCompanyFromAshby() {
+    // Try to find company name in various Ashby-specific places
+    const ashbyElements = document.querySelectorAll('[class*="company"], [class*="organization"], [class*="brand"], header');
+    for (const element of ashbyElements) {
+      const text = element.textContent?.trim();
+      if (text && text.length > 2 && text.length < 50 && !text.toLowerCase().includes('job') && !text.toLowerCase().includes('position')) {
+        return text;
+      }
+    }
+    
+    // For jobs.ashbyhq.com/company-slug/job-id pattern
+    if (location.hostname === 'jobs.ashbyhq.com') {
+      const pathParts = location.pathname.split('/').filter(p => p);
+      if (pathParts.length >= 1) {
+        const companySlug = pathParts[0];
+        if (companySlug && companySlug.length > 1) {
+          return capitalizeWords(companySlug.replace(/-/g, ' '));
+        }
+      }
+    }
+    
+    // Try to extract from subdomain patterns
+    // Ashby URLs are like: company-name.ashbyhq.com
+    const hostname = location.hostname;
+    if (hostname.includes('.ashbyhq.com')) {
+      const subdomain = hostname.replace('.ashbyhq.com', '');
+      if (subdomain && subdomain !== 'jobs' && subdomain !== 'www') {
+        return capitalizeWords(subdomain.replace(/-/g, ' '));
+      }
+    }
+    
+    return 'Company';
+  }
+
+  // Helper function to extract company name from Greenhouse pages
+  function extractCompanyFromGreenhouse() {
+    // Try to find company name in page content
+    const headers = document.querySelectorAll('h1, h2, h3, .header, .company, [class*="company"]');
+    for (const header of headers) {
+      const text = header.textContent?.trim();
+      if (text && text.length > 2 && text.length < 50 && !text.toLowerCase().includes('job') && !text.toLowerCase().includes('position')) {
+        return text;
+      }
+    }
+    
+    // Try to extract from meta tags
+    const description = document.querySelector('meta[name="description"]')?.content;
+    if (description) {
+      const match = description.match(/at ([^,.-]+)/i);
+      if (match) return match[1].trim();
+    }
+    
+    // Last resort: try hostname but clean it up
+    const hostname = location.hostname.replace('boards.', '').replace('.greenhouse.io', '');
+    if (hostname && hostname !== 'job' && !hostname.includes('.')) {
+      return hostname.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    return 'Company';
+  }
+
+  function extractJobData() {
+    try {
+      const portal = getJobPortal();
+      let jobTitle = '';
+      let companyName = '';
+      let jobLocation = '';
+      let jobId = '';
+
+      switch (portal) {
+      case 'linkedin':
+        jobTitle = textOf('h1.job-details-jobs-unified-top-card__job-title, .job-details-jobs-unified-top-card__job-title a, .jobs-unified-top-card__job-title');
+        companyName = textOf('.job-details-jobs-unified-top-card__company-name a, .jobs-unified-top-card__company-name a, .job-details-jobs-unified-top-card__company-name');
+        jobLocation = textOf('.job-details-jobs-unified-top-card__bullet, .jobs-unified-top-card__bullet');
+        jobId = location.pathname.match(/\/jobs\/view\/(\d+)/)?.[1] || '';
+        break;
+
+      case 'greenhouse':
+        // More robust Greenhouse selectors
+        jobTitle = textOf('h1[data-testid="job-title"], .job-post-title h1, .posting-headline h1, .app-title, h1') ||
+                  document.querySelector('title')?.textContent?.split(' - ')[0];
+        
+        // Better company name extraction for Greenhouse
+        companyName = textOf('.company-name, [data-testid="company-name"], .header-company-name, .company-header') || 
+                     textOf('a[href*="greenhouse.io"] img')?.alt ||
+                     document.title.split(' - ')[1]?.split(' |')[0] ||
+                     document.title.split(' at ')[1]?.split(' -')[0] ||
+                     document.querySelector('meta[property="og:site_name"]')?.content ||
+                     extractCompanyFromGreenhouse();
+        
+        jobLocation = textOf('.location, [data-testid="job-location"], .job-location, .posting-location');
+        jobId = location.pathname.match(/jobs\/(\d+)/)?.[1] || '';
+        break;
+
+      case 'ashby':
+        // Improved Ashby selectors
+        jobTitle = textOf('h1, .job-title, [data-testid="job-title"], .posting-job-title, [data-cy="job-title"], .job-posting-title') ||
+                  document.querySelector('title')?.textContent?.split(' - ')[0];
+        
+        companyName = textOf('.company-name, [data-testid="company-name"], .company-header, .company-title, [data-cy="company-name"], .job-posting-company') || 
+                     textOf('.ashby-job-posting-company, .ashby-company-name') ||
+                     document.title.split(' at ')[1]?.split(' |')[0]?.split(' -')[0] ||
+                     document.title.split(' - ')[1]?.split(' |')[0] ||
+                     document.querySelector('meta[property="og:site_name"]')?.content ||
+                     extractCompanyFromAshby();
+        
+        jobLocation = textOf('.location, [data-testid="location"], .job-location, .posting-location, [data-cy="location"]');
+        // Handle Ashby URL pattern: jobs.ashbyhq.com/company-slug/job-id
+        jobId = location.pathname.split('/').pop() || location.pathname.match(/jobs\/([^\/\?]+)/)?.[1] || '';
+        break;
+
+      case 'wellfound':
+        jobTitle = textOf('h1, .job-title, [data-testid="JobTitle"], .title, .job-listing-title');
+        companyName = textOf('.company-name, [data-testid="company-name"], .startup-link, .company-link, .company-title') ||
+                     document.title.split(' at ')[1]?.split(' |')[0]?.split(' -')[0] ||
+                     document.querySelector('meta[property="og:site_name"]')?.content ||
+                     capitalizeWords(location.pathname.split('/')[2]?.replace(/-/g, ' ') || 'Company');
+        jobLocation = textOf('.location, [data-testid="location"], .job-location, .location-text');
+        jobId = location.pathname.match(/jobs\/(\d+)/)?.[1] || '';
+        break;
+
+      case 'lever':
+        jobTitle = textOf('h1, .posting-headline h2, [data-qa="posting-name"], .posting-name');
+        companyName = textOf('.company-name, [data-qa="company-name"], .posting-company, .company-title') ||
+                     document.title.split(' - ')[1]?.split(' |')[0] ||
+                     document.querySelector('meta[property="og:site_name"]')?.content ||
+                     capitalizeWords(location.hostname.split('.')[0].replace(/-/g, ' '));
+        jobLocation = textOf('.location, [data-qa="posting-location"], .sort-by-location, .posting-location');
+        jobId = location.pathname.match(/([^\/]+)$/)?.[1] || '';
+        break;
+    }
+    
+    // Clean up and validate company name
+    if (companyName) {
+      companyName = companyName.trim();
+      // Remove common unwanted text
+      companyName = companyName.replace(/\s*-\s*careers?$/i, '')
+                              .replace(/\s*jobs?$/i, '')
+                              .replace(/\s*hiring$/i, '')
+                              .replace(/^at\s+/i, '')
+                              .trim();
+    }
+
+    return {
+      jobTitle: jobTitle || 'Position',
+      companyName: companyName || 'Company',
+      jobLocation: jobLocation || '',
+      jobId,
+      jobUrl: location.href.split('?')[0],
+      portal
+    };
+    } catch (error) {
+      console.log('[AutoNote] Error extracting job data:', error);
+      // Better fallback extraction
+      const fallbackCompany = document.title.split(' - ')[1] || 
+                             document.title.split(' at ')[1] || 
+                             document.querySelector('meta[property="og:site_name"]')?.content ||
+                             'Company';
+      return {
+        jobTitle: 'Position',
+        companyName: fallbackCompany.split(' |')[0].trim(),
+        jobLocation: '',
+        jobId: '',
+        jobUrl: location.href.split('?')[0],
+        portal: getJobPortal()
+      };
+    }
+  }
+
+  function createHiringTeamWidget(jobData) {
+    if (document.getElementById('hiring-team-widget')) return; // Avoid duplicates
+    
+    // Validate job data
+    if (!jobData || !jobData.companyName || jobData.companyName === 'Company') {
+      console.log('[AutoNote] Invalid job data, skipping widget creation');
+      return;
+    }
+
+    const widget = document.createElement('div');
+    widget.id = 'hiring-team-widget';
+    widget.innerHTML = `
+      <div class="hiring-widget-header">
+        <h3>🎯 Hiring Team Finder</h3>
+        <button class="hiring-widget-close" aria-label="Close">×</button>
+      </div>
+      <div class="hiring-widget-content">
+        <div class="job-info">
+          <div class="job-title">${jobData.jobTitle}</div>
+          <div class="company-name">at ${jobData.companyName}</div>
+          <div class="job-portal">via ${jobData.portal.charAt(0).toUpperCase() + jobData.portal.slice(1)}</div>
+        </div>
+        
+        <div class="hiring-section">
+          <h4>👥 Your Network at ${jobData.companyName}</h4>
+          <div id="network-connections" class="loading">Scanning your connections...</div>
+        </div>
+        
+        <div class="hiring-section">
+          <h4>🔍 Hiring Team</h4>
+          <div class="hiring-actions">
+            <button id="find-recruiters" class="action-btn">🎯 Search Recruiters</button>
+            <button id="find-managers" class="action-btn">👨‍💼 Search Managers</button>
+          </div>
+          <div id="hiring-team-results" class="results-container"></div>
+        </div>
+      </div>
+    `;
+
+    // Styling
+    Object.assign(widget.style, {
+      position: 'fixed',
+      top: '20px',
+      right: '20px',
+      width: '350px',
+      maxHeight: '80vh',
+      backgroundColor: '#fff',
+      border: '1px solid #ddd',
+      borderRadius: '12px',
+      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+      zIndex: '2147483647',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
+      fontSize: '14px',
+      overflowY: 'auto'
+    });
+
+    // Add CSS styles with CSP-safe approach
+    const style = document.createElement('style');
+    style.setAttribute('data-hiring-finder', 'true');
+    style.textContent = `
+      #hiring-team-widget .hiring-widget-header {
+        background: linear-gradient(135deg, #0a66c2, #004182);
+        color: white;
+        padding: 16px;
+        border-radius: 12px 12px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      #hiring-team-widget .hiring-widget-header h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      #hiring-team-widget .hiring-widget-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background-color 0.2s;
+      }
+      #hiring-team-widget .hiring-widget-close:hover {
+        background-color: rgba(255,255,255,0.1);
+      }
+      #hiring-team-widget .hiring-widget-content {
+        padding: 16px;
+      }
+      #hiring-team-widget .job-info {
+        margin-bottom: 16px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+      }
+      #hiring-team-widget .job-title {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 4px;
+      }
+      #hiring-team-widget .company-name {
+        color: #666;
+        font-size: 13px;
+      }
+      #hiring-team-widget .job-portal {
+        color: #0a66c2;
+        font-size: 11px;
+        font-weight: 500;
+        margin-top: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      #hiring-team-widget .hiring-section {
+        margin-bottom: 16px;
+      }
+      #hiring-team-widget .hiring-section h4 {
+        margin: 0 0 8px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+      }
+      #hiring-team-widget .hiring-actions {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      #hiring-team-widget .action-btn {
+        flex: 1;
+        padding: 8px 12px;
+        background: #0a66c2;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      #hiring-team-widget .action-btn:hover {
+        background: #004182;
+      }
+      #hiring-team-widget .loading {
+        text-align: center;
+        color: #666;
+        font-style: italic;
+        padding: 20px;
+      }
+      #hiring-team-widget .connection-card {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        border: 1px solid #e1e5e9;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        background: white;
+      }
+      #hiring-team-widget .connection-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        margin-right: 8px;
+        background: #ddd;
+      }
+      #hiring-team-widget .connection-info {
+        flex: 1;
+      }
+      #hiring-team-widget .connection-name {
+        font-weight: 500;
+        font-size: 13px;
+        color: #333;
+      }
+      #hiring-team-widget .connection-title {
+        font-size: 12px;
+        color: #666;
+        margin-top: 2px;
+      }
+      #hiring-team-widget .connection-actions {
+        display: flex;
+        gap: 4px;
+      }
+      #hiring-team-widget .mini-btn {
+        padding: 4px 8px;
+        font-size: 11px;
+        border: 1px solid #0a66c2;
+        background: white;
+        color: #0a66c2;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      #hiring-team-widget .mini-btn:hover {
+        background: #0a66c2;
+        color: white;
+      }
+    `;
+    document.head.appendChild(style);
+
+    try {
+      document.body.appendChild(widget);
+    } catch (error) {
+      console.log('[AutoNote] Error adding widget to page:', error);
+      return;
+    }
+
+    // Event listeners with error handling
+    try {
+      widget.querySelector('.hiring-widget-close').addEventListener('click', () => {
+        widget.remove();
+      });
+    } catch (error) {
+      console.log('[AutoNote] Error setting up widget event listeners:', error);
+    }
+
+    widget.querySelector('#find-recruiters').addEventListener('click', () => {
+      findHiringTeam(jobData, 'recruiter');
+    });
+
+    widget.querySelector('#find-managers').addEventListener('click', () => {
+      findHiringTeam(jobData, 'manager');
+    });
+
+    // Start scanning for network connections
+    scanNetworkConnections(jobData);
+  }
+
+  async function scanNetworkConnections(jobData) {
+    const networkDiv = document.getElementById('network-connections');
+    if (!networkDiv) return;
+
+    networkDiv.innerHTML = '<div class="loading">Scanning your network...</div>';
+    
+    try {
+      // Build proper LinkedIn search URLs
+      const companyQuery = encodeURIComponent(`"${jobData.companyName}"`);
+      
+      const searchUrls = {
+        connections: `https://www.linkedin.com/search/results/people/?keywords=${companyQuery}&network=%5B%22F%22%5D&origin=FACETED_SEARCH`,
+        secondDegree: `https://www.linkedin.com/search/results/people/?keywords=${companyQuery}&network=%5B%22S%22%5D&origin=FACETED_SEARCH`,
+        allEmployees: `https://www.linkedin.com/search/results/people/?keywords=${companyQuery}&origin=GLOBAL_SEARCH_HEADER`,
+        companySearch: `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(jobData.companyName)}&origin=GLOBAL_SEARCH_HEADER`
+      };
+      
+      // Wait and then provide actual search links
+      setTimeout(() => {
+        networkDiv.innerHTML = `
+          <div style="text-align: center; padding: 20px;">
+            <p style="margin-bottom: 16px; color: #666; font-size: 13px;">
+              Search for people at ${jobData.companyName}
+            </p>
+            <button class="action-btn network-search-connections" style="margin-bottom: 8px;">
+              🔍 Search Your 1st Connections
+            </button>
+            <button class="action-btn network-search-second" style="margin-bottom: 8px;">
+              👥 Search 2nd Connections
+            </button>
+            <button class="action-btn" onclick="window.open('${searchUrls.peopleAtCompany}', '_blank')" style="margin-bottom: 8px;">
+              � Search All Employees
+            </button>
+            <button class="action-btn" onclick="window.open('${searchUrls.companySearch}', '_blank')">
+              � Find Company Page
+            </button>
+            ${jobData.portal !== 'linkedin' ? `
+            <button class="action-btn" onclick="window.open('${jobData.jobUrl}', '_blank')" style="margin-top: 12px;">
+              📋 View Original Job Post
+            </button>` : ''}
+          </div>
+        `;
+        
+        // Add event listeners for network search buttons
+        setTimeout(() => {
+          try {
+            const buttons = networkDiv.querySelectorAll('button');
+            if (buttons[0]) buttons[0].onclick = () => window.open(searchUrls.connections, '_blank');
+            if (buttons[1]) buttons[1].onclick = () => window.open(searchUrls.secondDegree, '_blank');
+            if (buttons[2]) buttons[2].onclick = () => window.open(searchUrls.peopleAtCompany, '_blank');
+            if (buttons[3]) buttons[3].onclick = () => window.open(searchUrls.companySearch, '_blank');
+            if (buttons[4] && jobData.portal !== 'linkedin') buttons[4].onclick = () => window.open(jobData.jobUrl, '_blank');
+          } catch (error) {
+            console.log('[AutoNote] Error setting up network search listeners:', error);
+          }
+        }, 50);
+      }, 800);
+      
+    } catch (error) {
+      console.log('[AutoNote] Error scanning network:', error);
+      networkDiv.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+          <p style="color: #666; margin-bottom: 12px;">Search your network manually:</p>
+          <button class="action-btn" onclick="window.open('https://www.linkedin.com/search/results/people/?company=${encodeURIComponent(jobData.companyName)}', '_blank')">
+            🔍 Search All Employees
+          </button>
+        </div>
+      `;
+    }
+  }
+
+  async function findHiringTeam(jobData, type) {
+    const resultsDiv = document.getElementById('hiring-team-results');
+    if (!resultsDiv) return;
+
+    resultsDiv.innerHTML = '<div class="loading">Searching for hiring team...</div>';
+
+    const searchTerms = type === 'recruiter' 
+      ? ['recruiter', 'talent acquisition', 'talent partner', 'hiring']
+      : ['hiring manager', 'engineering manager', 'director', 'vp'];
+
+    try {
+      // Build proper LinkedIn search URLs with correct encoding
+      const companyQuery = encodeURIComponent(`"${jobData.companyName}"`);
+      const keywordQuery = encodeURIComponent(searchTerms[0]); // Use primary search term
+      
+      const searchUrls = {
+        main: `https://www.linkedin.com/search/results/people/?keywords=${keywordQuery}&origin=GLOBAL_SEARCH_HEADER&page=1`,
+        company: `https://www.linkedin.com/search/results/people/?keywords=${keywordQuery}%20${companyQuery}&origin=GLOBAL_SEARCH_HEADER`,
+        connections: `https://www.linkedin.com/search/results/people/?keywords=${keywordQuery}%20${companyQuery}&network=%5B%22F%22%2C%22S%22%5D&origin=FACETED_SEARCH`,
+        companySearch: `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(jobData.companyName)}&origin=GLOBAL_SEARCH_HEADER`,
+        peopleAtCompany: `https://www.linkedin.com/search/results/people/?keywords=${companyQuery}&origin=GLOBAL_SEARCH_HEADER`
+      };
+
+      setTimeout(() => {
+        const isRecruiter = type === 'recruiter';
+        const title = isRecruiter ? 'Recruiters & Talent Team' : 'Hiring Managers';
+        
+        resultsDiv.innerHTML = `
+          <div style="padding: 16px;">
+            <h4 style="margin: 0 0 16px 0; color: #333; font-size: 14px;">Find ${title} at ${jobData.companyName}</h4>
+            
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
+              <button class="action-btn" onclick="window.open('${searchUrls.company}', '_blank')">
+                🎯 Search ${isRecruiter ? 'Recruiters' : 'Managers'} at Company
+              </button>
+              
+              <button class="action-btn" onclick="window.open('${searchUrls.main}', '_blank')">
+                🔍 Search All ${isRecruiter ? 'Recruiters' : 'Managers'}
+              </button>
+              
+              <button class="action-btn" onclick="window.open('${searchUrls.connections}', '_blank')">
+                � Search in Your Network
+              </button>
+              
+              <button class="action-btn" onclick="window.open('https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent('hiring ' + jobData.companyName)}&origin=GLOBAL_SEARCH_HEADER', '_blank')">
+                � Search "Hiring" + Company
+              </button>
+            </div>
+            
+            <div style="margin-top: 16px;">
+              <button class="action-btn" onclick="window.open('https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(jobData.companyName)}&origin=GLOBAL_SEARCH_HEADER', '_blank')" 
+                      style="background: #057642;">
+                🏢 Find Company Page
+              </button>
+            </div>
+            
+            <div style="margin-top: 16px; padding: 12px; background: #f0f8ff; border-radius: 6px; font-size: 12px; color: #0066cc;">
+              💡 <strong>Search Strategy:</strong><br>
+              • Start with "Search at Company" for best results<br>
+              • "Find Company Page" will help you locate the official company page<br>
+              • Then you can browse employees from the company page
+            </div>
+          </div>
+        `;
+        
+        // Add event listeners for hiring team search buttons
+        setTimeout(() => {
+          try {
+            const buttons = resultsDiv.querySelectorAll('button');
+            if (buttons[0]) buttons[0].onclick = () => window.open(searchUrls.company, '_blank');
+            if (buttons[1]) buttons[1].onclick = () => window.open(searchUrls.main, '_blank');
+            if (buttons[2]) buttons[2].onclick = () => window.open(searchUrls.connections, '_blank');
+            if (buttons[3]) buttons[3].onclick = () => window.open(`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent('hiring ' + jobData.companyName)}&origin=GLOBAL_SEARCH_HEADER`, '_blank');
+            if (buttons[4]) buttons[4].onclick = () => window.open(`https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(jobData.companyName)}&origin=GLOBAL_SEARCH_HEADER`, '_blank');
+          } catch (error) {
+            console.log('[AutoNote] Error setting up hiring team search listeners:', error);
+          }
+        }, 50);
+      }, 800);
+      
+    } catch (error) {
+      console.log('[AutoNote] Error in findHiringTeam:', error);
+      // Fallback to simple search
+      const simpleSearch = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(type === 'recruiter' ? 'recruiter ' + jobData.companyName : 'manager ' + jobData.companyName)}`;
+      resultsDiv.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+          <p style="color: #666; margin-bottom: 12px;">Simple search:</p>
+          <button class="action-btn fallback-search-type">
+            🔍 Search ${type === 'recruiter' ? 'Recruiters' : 'Managers'}
+          </button>
+          <button class="action-btn fallback-search-all" style="margin-top: 8px;">
+            🏢 Search All Employees
+          </button>
+        </div>
+      `;
+      
+      // Add event listeners for fallback buttons
+      setTimeout(() => {
+        try {
+          resultsDiv.querySelector('.fallback-search-type')?.addEventListener('click', () => window.open(simpleSearch, '_blank'));
+          resultsDiv.querySelector('.fallback-search-all')?.addEventListener('click', () => window.open(`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(jobData.companyName)}`, '_blank'));
+        } catch (error) {
+          console.log('[AutoNote] Error setting up fallback search listeners:', error);
+        }
+      }, 50);
+    }
+  }
+
   // —— Binding ——
   const bindButtons = debounce(() => {
     const btns = Array.from(document.querySelectorAll('button, [role="button"], .artdeco-button, a[role="button"]'));
     for (const b of btns) {
       if (!isBound(b) && isConnectButton(b)) { b.addEventListener('click', () => handleConnect(b), { capture: true }); markBound(b); }
       if (!isBound(b, 'autoNoteBoundMsg') && isMessageButton(b)) { b.addEventListener('click', () => handleMessage(b), { capture: true }); markBound(b, 'autoNoteBoundMsg'); }
+    }
+    
+    // Initialize job posting widget if on job page (with delay for dynamic content)
+    if (isJobPostingPage() && !document.getElementById('hiring-team-widget')) {
+      setTimeout(() => {
+        try {
+          const jobData = extractJobData();
+          if (jobData && jobData.companyName && jobData.companyName !== 'Company') {
+            createHiringTeamWidget(jobData);
+          }
+        } catch (error) {
+          console.log('[AutoNote] Error initializing job widget:', error);
+        }
+      }, 1000); // Wait 1 second for page content to load
     }
   }, 250);
 
@@ -582,6 +1215,19 @@ fancy a quick chat this week?
       if (msg?.type === 'openMessage') {
         const target = Array.from(document.querySelectorAll('button, [role="button"], .artdeco-button, a[role="button"]')).find(isMessageButton);
         if (target) target.click();
+      }
+      if (msg?.type === 'openHiringFinder') {
+        if (isJobPostingPage()) {
+          const existing = document.getElementById('hiring-team-widget');
+          if (existing) {
+            existing.remove();
+          } else {
+            const jobData = extractJobData();
+            if (jobData.companyName && jobData.companyName !== 'Company') {
+              createHiringTeamWidget(jobData);
+            }
+          }
+        }
       }
     });
   }
