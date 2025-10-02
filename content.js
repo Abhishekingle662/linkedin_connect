@@ -42,6 +42,40 @@ fancy a quick chat this week?`
   const debounce = (fn, wait) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), wait); }; };
   const clean = (s='') => s.replace(/\s+/g, ' ').trim();
   const textOf = (sel) => clean(document.querySelector(sel)?.textContent || '');
+  
+  // Debug helper - expose globally for console testing
+  window.AutoNoteDebug = {
+    showWidget: () => {
+      log('🔧 Manual widget trigger');
+      const dismissKey = `hiring-widget-dismissed-${location.href.split('?')[0]}`;
+      sessionStorage.removeItem(dismissKey);
+      const existing = document.getElementById('hiring-team-widget');
+      if (existing) existing.remove();
+      const jobData = extractJobData();
+      log('Job data:', jobData);
+      if (jobData.companyName && jobData.companyName !== 'Company') {
+        createHiringTeamWidget(jobData);
+      } else {
+        log('❌ Cannot create widget - invalid job data');
+      }
+    },
+    clearDismissal: () => {
+      const dismissKey = `hiring-widget-dismissed-${location.href.split('?')[0]}`;
+      sessionStorage.removeItem(dismissKey);
+      log('✅ Cleared dismissal flag');
+    },
+    checkStatus: () => {
+      const dismissKey = `hiring-widget-dismissed-${location.href.split('?')[0]}`;
+      log('📊 Widget Status:', {
+        isJobPage: isJobPostingPage(),
+        portal: getJobPortal(),
+        widgetExists: !!document.getElementById('hiring-team-widget'),
+        wasDismissed: sessionStorage.getItem(dismissKey) === 'true',
+        url: location.href,
+        jobData: extractJobData()
+      });
+    }
+  };
 
   // Buttons
   function isConnectButton(el) {
@@ -244,85 +278,107 @@ fancy a quick chat this week?`
     const bar = document.createElement('div');
     bar.className = 'autoNote-helper-note';
     bar.innerHTML = `
-      <span style="color:#fff;align-self:center;">Template:</span>
-      <button data-act="cycle">Default</button>
-  <button data-act="randomRecruiter" title="Insert a random recruiter template">Random Recruiter</button>
-  <button data-act="ckNote" title="Insert CK 0.1% template (toggles A/B)">0.1% A</button>
-      <button data-act="replace">Replace</button>
-      <button data-act="replaceSend">Replace & Send</button>
+      <span style="color:#fff;align-self:center;margin-right:6px;font-weight:500;">Insert:</span>
+      <button data-act="recruiter" title="Toggle between 2 recruiter templates">Recruiter 1</button>
+      <button data-act="alumni" title="Insert alumni template">Alumni</button>
+      <button data-act="elite" title="Toggle between Elite A/B templates">Elite A</button>
+      <button data-act="postApp" title="Insert post-application follow-up">Follow-up</button>
+      <button data-act="send" style="background:#222;border:1px solid #222;margin-left:4px;" title="Send current message">✓ Send</button>
     `;
-    Object.assign(bar.style, { position:'fixed', right:'12px', bottom:'140px', zIndex:2147483647, display:'flex', gap:'8px', background:'#0f1116', borderRadius:'12px', padding:'8px', boxShadow:'0 10px 30px rgba(0,0,0,.35)' });
-    Array.from(bar.querySelectorAll('button')).forEach(btn => { Object.assign(btn.style, { border:0, borderRadius:'10px', padding:'8px 10px', background:'#0a66c2', color:'#fff', cursor:'pointer' }); });
+    Object.assign(bar.style, { position:'fixed', right:'12px', bottom:'140px', zIndex:2147483647, display:'flex', gap:'6px', background:'linear-gradient(135deg, #222, #333)', borderRadius:'8px', padding:'10px 12px', boxShadow:'0 4px 12px rgba(0,0,0,0.2)', alignItems:'center', border:'1px solid rgba(255,255,255,0.1)' });
+    Array.from(bar.querySelectorAll('button')).forEach(btn => { 
+      Object.assign(btn.style, { 
+        border:'1px solid rgba(255,255,255,0.2)', 
+        borderRadius:'6px', 
+        padding:'7px 12px', 
+        background:'rgba(255,255,255,0.1)', 
+        color:'#fff', 
+        cursor:'pointer', 
+        fontSize:'12px', 
+        fontWeight:'500',
+        whiteSpace:'nowrap',
+        transition:'all 0.2s'
+      }); 
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = 'rgba(255,255,255,0.2)';
+        btn.style.borderColor = 'rgba(255,255,255,0.3)';
+      });
+      btn.addEventListener('mouseleave', () => {
+        if (btn.getAttribute('data-act') === 'send') {
+          btn.style.background = '#222';
+          btn.style.borderColor = '#222';
+        } else {
+          btn.style.background = 'rgba(255,255,255,0.1)';
+          btn.style.borderColor = 'rgba(255,255,255,0.2)';
+        }
+      });
+    });
     document.body.appendChild(bar);
 
-    // Build template list for note flow
-    const options = [];
-    options.push({ key:'default', label:'Default', get: () => pickAudienceTemplate(ctx) });
-    if (settings.alumniTemplate) options.push({ key:'alumni', label:'Alumni', get: () => settings.alumniTemplate });
-    if (settings.referralTemplate) options.push({ key:'referral', label:'Referral', get: () => settings.referralTemplate });
-    if (Array.isArray(settings.customTemplates)) {
-      settings.customTemplates.forEach((t, idx) => {
-        const title = (t?.title || '').trim();
-        const body = (t?.body || '').trim();
-        if (body) options.push({ key:`custom${idx+1}`, label:title || `Custom ${idx+1}`, get: () => body });
-      });
-    }
-  let idx = 0;
-  let ckIdxNote = 0; // 0 => A, 1 => B
-    const cycleBtn = bar.querySelector('button[data-act="cycle"]');
-  const ckNoteBtn = bar.querySelector('button[data-act="ckNote"]');
-    const updateLabel = () => { cycleBtn.textContent = options[idx]?.label || 'Default'; };
-    updateLabel();
+    // Track toggle states
+    let recruiterIdx = 0; // 0 or 1 for recruiterTpl1/2
+    let eliteIdx = 0; // 0 or 1 for eliteA/B
+    
+    const recruiterBtn = bar.querySelector('button[data-act="recruiter"]');
+    const eliteBtn = bar.querySelector('button[data-act="elite"]');
 
     const dispose = () => { bar.remove(); delete modalRoot.dataset.autoNoteUi; };
+    
     const onClick = async (e) => {
       const act = e.target.getAttribute('data-act');
       if (!act) return;
-      if (act === 'cycle') { idx = (idx + 1) % options.length; updateLabel(); return; }
-      if (act === 'ckNote') {
-        const tpl = ckIdxNote === 0 ? Abhishek_Templates.connectA : Abhishek_Templates.connectB;
+      
+      let tpl = '';
+      
+      if (act === 'recruiter') {
+        // Toggle between recruiter templates
+        const templates = [
+          settings.recruiterTpl1 || DEFAULTS.recruiterTpl1,
+          settings.recruiterTpl2 || DEFAULTS.recruiterTpl2
+        ];
+        tpl = templates[recruiterIdx];
+        recruiterIdx = (recruiterIdx + 1) % 2;
+        recruiterBtn.textContent = `Recruiter ${recruiterIdx + 1}`;
+      } 
+      else if (act === 'alumni') {
+        tpl = settings.alumniTemplate || DEFAULTS.alumniTemplate;
+      } 
+      else if (act === 'elite') {
+        // Toggle between elite templates
+        const templates = [
+          settings.eliteMessageA || DEFAULTS.eliteMessageA,
+          settings.eliteMessageB || DEFAULTS.eliteMessageB
+        ];
+        tpl = templates[eliteIdx];
+        eliteIdx = (eliteIdx + 1) % 2;
+        eliteBtn.textContent = `Elite ${eliteIdx === 0 ? 'A' : 'B'}`;
+      } 
+      else if (act === 'postApp') {
+        tpl = settings.postApplicationFollowUp || DEFAULTS.postApplicationFollowUp;
+      }
+      else if (act === 'send') {
+        // Send current message
+        const modal = document.querySelector('div[role="dialog"], .artdeco-modal') || document;
+        const btns = Array.from(modal.querySelectorAll('button'));
+        const send = btns.find(b => /^(send)$/i.test(clean(b.textContent || '')) || /^(send)$/i.test(clean(b.getAttribute('aria-label') || '')));
+        if (send) send.click();
+        return;
+      }
+      
+      // Insert template into textarea
+      if (tpl) {
         const msg = capLinkedInLimit(fillTemplate(tpl, ctx));
         try {
           textarea.focus();
           textarea.value = msg;
           textarea.dispatchEvent(new Event('input', { bubbles: true }));
           textarea.dispatchEvent(new Event('change', { bubbles: true }));
-        } catch {}
-        ckIdxNote = (ckIdxNote + 1) % 2;
-        if (ckNoteBtn) ckNoteBtn.textContent = `0.1% ${ckIdxNote === 0 ? 'A' : 'B'}`;
-        return;
-      }
-      if (act === 'randomRecruiter') {
-        const list = (Array.isArray(settings.recruiterTemplates) && settings.recruiterTemplates.length)
-          ? settings.recruiterTemplates
-          : (Array.isArray(DEFAULTS.recruiterTemplates) ? DEFAULTS.recruiterTemplates : []);
-        const valid = list.filter(t => (t || '').trim().length > 0);
-        const use = valid.length ? valid : list;
-        const tpl = use.length ? use[Math.floor(Math.random() * use.length)] : '';
-        const msg = capLinkedInLimit(fillTemplate(tpl || '', ctx));
-        try {
-          textarea.focus();
-          textarea.value = msg;
-          textarea.dispatchEvent(new Event('input', { bubbles: true }));
-          textarea.dispatchEvent(new Event('change', { bubbles: true }));
-        } catch {}
-        return;
-      }
-      const tpl = options[idx]?.get?.() || pickAudienceTemplate(ctx);
-      const msg = capLinkedInLimit(fillTemplate(tpl, ctx));
-      try {
-        textarea.focus();
-        textarea.value = msg;
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-        textarea.dispatchEvent(new Event('change', { bubbles: true }));
-      } catch {}
-      if (act === 'replaceSend') {
-        const modal = document.querySelector('div[role="dialog"], .artdeco-modal') || document;
-        const btns = Array.from(modal.querySelectorAll('button'));
-        const send = btns.find(b => /^(send)$/i.test(clean(b.textContent || '')) || /^(send)$/i.test(clean(b.getAttribute('aria-label') || '')));
-        if (send) send.click();
+        } catch (err) {
+          log('Failed to insert template:', err);
+        }
       }
     };
+    
     bar.addEventListener('click', onClick);
 
     // Cleanup when modal closes
@@ -762,6 +818,7 @@ fancy a quick chat this week?`
   function extractJobData() {
     try {
       const portal = getJobPortal();
+      log('🔍 Extracting job data from portal:', portal);
       let jobTitle = '';
       let companyName = '';
       let jobLocation = '';
@@ -876,7 +933,7 @@ fancy a quick chat this week?`
                               .trim();
     }
 
-    return {
+    const result = {
       jobTitle: jobTitle || 'Position',
       companyName: companyName || 'Company',
       jobLocation: jobLocation || '',
@@ -884,6 +941,9 @@ fancy a quick chat this week?`
       jobUrl: location.href.split('?')[0],
       portal
     };
+    
+    log('📊 Extracted job data:', result);
+    return result;
     } catch (error) {
       console.log('[AutoNote] Error extracting job data:', error);
       // Better fallback extraction
@@ -903,13 +963,24 @@ fancy a quick chat this week?`
   }
 
   function createHiringTeamWidget(jobData) {
-    if (document.getElementById('hiring-team-widget')) return; // Avoid duplicates
+    log('🎯 createHiringTeamWidget called with:', jobData);
+    
+    if (document.getElementById('hiring-team-widget')) {
+      log('⚠️ Widget already exists, skipping creation');
+      return; // Avoid duplicates
+    }
     
     // Validate job data
     if (!jobData || !jobData.companyName || jobData.companyName === 'Company') {
-      console.log('[AutoNote] Invalid job data, skipping widget creation');
+      log('❌ Invalid job data, skipping widget creation:', {
+        hasData: !!jobData,
+        companyName: jobData?.companyName,
+        isDefault: jobData?.companyName === 'Company'
+      });
       return;
     }
+    
+    log('✅ Creating hiring team widget for:', jobData.companyName);
 
     const widget = document.createElement('div');
     widget.id = 'hiring-team-widget';
@@ -919,11 +990,7 @@ fancy a quick chat this week?`
         <button class="hiring-widget-close" aria-label="Close">×</button>
       </div>
       <div class="hiring-widget-content">
-        <div class="job-info">
-          <div class="job-title">${jobData.jobTitle}</div>
-          <div class="company-name">at ${jobData.companyName}</div>
-          <div class="job-portal">via ${jobData.portal.charAt(0).toUpperCase() + jobData.portal.slice(1)}</div>
-        </div>
+        
         
         <div class="hiring-section">
           <h4>👥 Your Network at ${jobData.companyName}</h4>
@@ -941,7 +1008,7 @@ fancy a quick chat this week?`
       </div>
     `;
 
-    // Styling
+    // Styling - Minimal black/white/gray design
     Object.assign(widget.style, {
       position: 'fixed',
       top: '20px',
@@ -950,48 +1017,51 @@ fancy a quick chat this week?`
       maxHeight: '80vh',
       backgroundColor: '#fff',
       border: '1px solid #ddd',
-      borderRadius: '12px',
-      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+      borderRadius: '8px',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
       zIndex: '2147483647',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
+      fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
       fontSize: '14px',
       overflowY: 'auto'
     });
 
-    // Add CSS styles with CSP-safe approach
+    // Add CSS styles with CSP-safe approach - Minimal black/white/gray design
     const style = document.createElement('style');
     style.setAttribute('data-hiring-finder', 'true');
     style.textContent = `
       #hiring-team-widget .hiring-widget-header {
-        background: linear-gradient(135deg, #0a66c2, #004182);
+        background: linear-gradient(135deg, #222, #333);
         color: white;
-        padding: 16px;
-        border-radius: 12px 12px 0 0;
+        padding: 14px 16px;
+        border-radius: 8px 8px 0 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
       }
       #hiring-team-widget .hiring-widget-header h3 {
         margin: 0;
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 600;
+        letter-spacing: -0.01em;
       }
       #hiring-team-widget .hiring-widget-close {
-        background: none;
-        border: none;
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
         color: white;
-        font-size: 20px;
+        font-size: 18px;
         cursor: pointer;
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 50%;
-        transition: background-color 0.2s;
+        border-radius: 6px;
+        transition: all 0.2s;
+        line-height: 1;
       }
       #hiring-team-widget .hiring-widget-close:hover {
-        background-color: rgba(255,255,255,0.1);
+        background: rgba(255,255,255,0.2);
+        border-color: rgba(255,255,255,0.3);
       }
       #hiring-team-widget .hiring-widget-content {
         padding: 16px;
@@ -999,20 +1069,22 @@ fancy a quick chat this week?`
       #hiring-team-widget .job-info {
         margin-bottom: 16px;
         padding: 12px;
-        background: #f8f9fa;
-        border-radius: 8px;
+        background: #f7f7f7;
+        border: 1px solid #eee;
+        border-radius: 6px;
       }
       #hiring-team-widget .job-title {
         font-weight: 600;
-        color: #333;
+        color: #222;
         margin-bottom: 4px;
+        font-size: 14px;
       }
       #hiring-team-widget .company-name {
         color: #666;
         font-size: 13px;
       }
       #hiring-team-widget .job-portal {
-        color: #0a66c2;
+        color: #999;
         font-size: 11px;
         font-weight: 500;
         margin-top: 4px;
@@ -1023,10 +1095,11 @@ fancy a quick chat this week?`
         margin-bottom: 16px;
       }
       #hiring-team-widget .hiring-section h4 {
-        margin: 0 0 8px 0;
-        font-size: 14px;
+        margin: 0 0 10px 0;
+        font-size: 13px;
         font-weight: 600;
-        color: #333;
+        color: #222;
+        letter-spacing: -0.01em;
       }
       #hiring-team-widget .hiring-actions {
         display: flex;
@@ -1035,38 +1108,46 @@ fancy a quick chat this week?`
       }
       #hiring-team-widget .action-btn {
         flex: 1;
-        padding: 8px 12px;
-        background: #0a66c2;
+        padding: 9px 12px;
+        background: #222;
         color: white;
-        border: none;
+        border: 1px solid #222;
         border-radius: 6px;
         font-size: 12px;
+        font-weight: 500;
         cursor: pointer;
-        transition: background-color 0.2s;
+        transition: all 0.2s;
       }
       #hiring-team-widget .action-btn:hover {
-        background: #004182;
+        background: #000;
+        border-color: #000;
       }
       #hiring-team-widget .loading {
         text-align: center;
-        color: #666;
+        color: #999;
         font-style: italic;
         padding: 20px;
+        font-size: 13px;
       }
       #hiring-team-widget .connection-card {
         display: flex;
         align-items: center;
-        padding: 8px;
-        border: 1px solid #e1e5e9;
+        padding: 10px;
+        border: 1px solid #ddd;
         border-radius: 6px;
         margin-bottom: 8px;
         background: white;
+        transition: all 0.2s;
+      }
+      #hiring-team-widget .connection-card:hover {
+        border-color: #999;
+        background: #fafafa;
       }
       #hiring-team-widget .connection-avatar {
         width: 32px;
         height: 32px;
         border-radius: 50%;
-        margin-right: 8px;
+        margin-right: 10px;
         background: #ddd;
       }
       #hiring-team-widget .connection-info {
@@ -1075,7 +1156,7 @@ fancy a quick chat this week?`
       #hiring-team-widget .connection-name {
         font-weight: 500;
         font-size: 13px;
-        color: #333;
+        color: #222;
       }
       #hiring-team-widget .connection-title {
         font-size: 12px;
@@ -1087,18 +1168,20 @@ fancy a quick chat this week?`
         gap: 4px;
       }
       #hiring-team-widget .mini-btn {
-        padding: 4px 8px;
+        padding: 5px 10px;
         font-size: 11px;
-        border: 1px solid #0a66c2;
+        border: 1px solid #ddd;
         background: white;
-        color: #0a66c2;
+        color: #222;
         border-radius: 4px;
         cursor: pointer;
         transition: all 0.2s;
+        font-weight: 500;
       }
       #hiring-team-widget .mini-btn:hover {
-        background: #0a66c2;
+        background: #222;
         color: white;
+        border-color: #222;
       }
     `;
     document.head.appendChild(style);
@@ -1128,20 +1211,32 @@ fancy a quick chat this week?`
                 position: fixed;
                 bottom: 20px;
                 right: 20px;
-                background: #0a66c2;
+                background: #222;
                 color: white;
-                border: none;
-                border-radius: 50%;
+                border: 1px solid #222;
+                border-radius: 8px;
                 width: 48px;
                 height: 48px;
                 font-size: 16px;
                 cursor: pointer;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                 z-index: 2147483646;
                 transition: all 0.2s;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+                font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
               " title="Show Hiring Team Finder">👥</button>
             `;
+            
+            restoreBtn.querySelector('button').addEventListener('mouseenter', (e) => {
+              e.target.style.background = '#000';
+              e.target.style.borderColor = '#000';
+              e.target.style.boxShadow = '0 6px 16px rgba(0,0,0,0.2)';
+            });
+            
+            restoreBtn.querySelector('button').addEventListener('mouseleave', (e) => {
+              e.target.style.background = '#222';
+              e.target.style.borderColor = '#222';
+              e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+            });
             
             restoreBtn.querySelector('button').addEventListener('click', () => {
               sessionStorage.removeItem(dismissKey);
@@ -1192,10 +1287,9 @@ fancy a quick chat this week?`
       const searchUrls = {
         connections: `https://www.linkedin.com/search/results/people/?keywords=${companyQuery}&network=%5B%22F%22%5D&origin=FACETED_SEARCH`,
         secondDegree: `https://www.linkedin.com/search/results/people/?keywords=${companyQuery}&network=%5B%22S%22%5D&origin=FACETED_SEARCH`,
-        allEmployees: `https://www.linkedin.com/search/results/people/?keywords=${companyQuery}&origin=GLOBAL_SEARCH_HEADER`,
+        peopleAtCompany: `https://www.linkedin.com/search/results/people/?keywords=${companyQuery}&origin=GLOBAL_SEARCH_HEADER`,
         companySearch: `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(jobData.companyName)}&origin=GLOBAL_SEARCH_HEADER`
       };
-      
       // Wait and then provide actual search links
       setTimeout(() => {
         networkDiv.innerHTML = `
@@ -1209,14 +1303,14 @@ fancy a quick chat this week?`
             <button class="action-btn network-search-second" style="margin-bottom: 8px;">
               👥 Search 2nd Connections
             </button>
-            <button class="action-btn" onclick="window.open('${searchUrls.peopleAtCompany}', '_blank')" style="margin-bottom: 8px;">
-              � Search All Employees
+            <button class="action-btn network-search-all" style="margin-bottom: 8px;">
+              🏢 Search All Employees
             </button>
-            <button class="action-btn" onclick="window.open('${searchUrls.companySearch}', '_blank')">
-              � Find Company Page
+            <button class="action-btn network-search-company" style="margin-bottom: 8px;">
+              🔍 Find Company Page
             </button>
             ${jobData.portal !== 'linkedin' ? `
-            <button class="action-btn" onclick="window.open('${jobData.jobUrl}', '_blank')" style="margin-top: 12px;">
+            <button class="action-btn network-search-job" style="margin-top: 12px;">
               📋 View Original Job Post
             </button>` : ''}
           </div>
@@ -1225,12 +1319,13 @@ fancy a quick chat this week?`
         // Add event listeners for network search buttons
         setTimeout(() => {
           try {
-            const buttons = networkDiv.querySelectorAll('button');
-            if (buttons[0]) buttons[0].onclick = () => window.open(searchUrls.connections, '_blank');
-            if (buttons[1]) buttons[1].onclick = () => window.open(searchUrls.secondDegree, '_blank');
-            if (buttons[2]) buttons[2].onclick = () => window.open(searchUrls.peopleAtCompany, '_blank');
-            if (buttons[3]) buttons[3].onclick = () => window.open(searchUrls.companySearch, '_blank');
-            if (buttons[4] && jobData.portal !== 'linkedin') buttons[4].onclick = () => window.open(jobData.jobUrl, '_blank');
+            networkDiv.querySelector('.network-search-connections')?.addEventListener('click', () => window.open(searchUrls.connections, '_blank'));
+            networkDiv.querySelector('.network-search-second')?.addEventListener('click', () => window.open(searchUrls.secondDegree, '_blank'));
+            networkDiv.querySelector('.network-search-all')?.addEventListener('click', () => window.open(searchUrls.peopleAtCompany, '_blank'));
+            networkDiv.querySelector('.network-search-company')?.addEventListener('click', () => window.open(searchUrls.companySearch, '_blank'));
+            if (jobData.portal !== 'linkedin') {
+              networkDiv.querySelector('.network-search-job')?.addEventListener('click', () => window.open(jobData.jobUrl, '_blank'));
+            }
           } catch (error) {
             console.log('[AutoNote] Error setting up network search listeners:', error);
           }
@@ -1282,26 +1377,25 @@ fancy a quick chat this week?`
             <h4 style="margin: 0 0 16px 0; color: #333; font-size: 14px;">Find ${title} at ${jobData.companyName}</h4>
             
             <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
-              <button class="action-btn" onclick="window.open('${searchUrls.company}', '_blank')">
+              <button class="action-btn hiring-search-company">
                 🎯 Search ${isRecruiter ? 'Recruiters' : 'Managers'} at Company
               </button>
               
-              <button class="action-btn" onclick="window.open('${searchUrls.main}', '_blank')">
+              <button class="action-btn hiring-search-all">
                 🔍 Search All ${isRecruiter ? 'Recruiters' : 'Managers'}
               </button>
               
-              <button class="action-btn" onclick="window.open('${searchUrls.connections}', '_blank')">
-                � Search in Your Network
+              <button class="action-btn hiring-search-network">
+                👥 Search in Your Network
               </button>
               
-              <button class="action-btn" onclick="window.open('https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent('hiring ' + jobData.companyName)}&origin=GLOBAL_SEARCH_HEADER', '_blank')">
-                � Search "Hiring" + Company
+              <button class="action-btn hiring-search-hiring">
+                💼 Search "Hiring" + Company
               </button>
             </div>
             
             <div style="margin-top: 16px;">
-              <button class="action-btn" onclick="window.open('https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(jobData.companyName)}&origin=GLOBAL_SEARCH_HEADER', '_blank')" 
-                      style="background: #057642;">
+              <button class="action-btn hiring-find-company" style="background: #222; border-color: #222;">
                 🏢 Find Company Page
               </button>
             </div>
@@ -1318,12 +1412,11 @@ fancy a quick chat this week?`
         // Add event listeners for hiring team search buttons
         setTimeout(() => {
           try {
-            const buttons = resultsDiv.querySelectorAll('button');
-            if (buttons[0]) buttons[0].onclick = () => window.open(searchUrls.company, '_blank');
-            if (buttons[1]) buttons[1].onclick = () => window.open(searchUrls.main, '_blank');
-            if (buttons[2]) buttons[2].onclick = () => window.open(searchUrls.connections, '_blank');
-            if (buttons[3]) buttons[3].onclick = () => window.open(`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent('hiring ' + jobData.companyName)}&origin=GLOBAL_SEARCH_HEADER`, '_blank');
-            if (buttons[4]) buttons[4].onclick = () => window.open(`https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(jobData.companyName)}&origin=GLOBAL_SEARCH_HEADER`, '_blank');
+            resultsDiv.querySelector('.hiring-search-company')?.addEventListener('click', () => window.open(searchUrls.company, '_blank'));
+            resultsDiv.querySelector('.hiring-search-all')?.addEventListener('click', () => window.open(searchUrls.main, '_blank'));
+            resultsDiv.querySelector('.hiring-search-network')?.addEventListener('click', () => window.open(searchUrls.connections, '_blank'));
+            resultsDiv.querySelector('.hiring-search-hiring')?.addEventListener('click', () => window.open(`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent('hiring ' + jobData.companyName)}&origin=GLOBAL_SEARCH_HEADER`, '_blank'));
+            resultsDiv.querySelector('.hiring-find-company')?.addEventListener('click', () => window.open(`https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(jobData.companyName)}&origin=GLOBAL_SEARCH_HEADER`, '_blank'));
           } catch (error) {
             console.log('[AutoNote] Error setting up hiring team search listeners:', error);
           }
@@ -1367,22 +1460,46 @@ fancy a quick chat this week?`
     }
     
     // Initialize job posting widget if on job page (with delay for dynamic content)
-    if (isJobPostingPage() && !document.getElementById('hiring-team-widget')) {
-      // Check if user has dismissed the widget for this page
+    if (isJobPostingPage()) {
       const dismissKey = `hiring-widget-dismissed-${location.href.split('?')[0]}`;
       const wasDismissed = sessionStorage.getItem(dismissKey) === 'true';
       
-      if (!wasDismissed) {
-        setTimeout(() => {
-          try {
-            const jobData = extractJobData();
-            if (jobData && jobData.companyName && jobData.companyName !== 'Company') {
-              createHiringTeamWidget(jobData);
+      log('📍 On job posting page:', {
+        url: location.href,
+        portal: getJobPortal(),
+        dismissed: wasDismissed,
+        widgetExists: !!document.getElementById('hiring-team-widget')
+      });
+      
+      if (!wasDismissed && !document.getElementById('hiring-team-widget')) {
+        // Try multiple times with increasing delays to handle dynamic content
+        const tryCreateWidget = (attempt = 1) => {
+          setTimeout(() => {
+            try {
+              if (document.getElementById('hiring-team-widget')) {
+                log('Widget already created, skipping attempt', attempt);
+                return;
+              }
+              
+              const jobData = extractJobData();
+              log(`Attempt ${attempt} - Job data:`, jobData);
+              
+              if (jobData && jobData.companyName && jobData.companyName !== 'Company') {
+                createHiringTeamWidget(jobData);
+              } else if (attempt < 3) {
+                log(`❌ Invalid data on attempt ${attempt}, retrying...`);
+                tryCreateWidget(attempt + 1);
+              } else {
+                log('❌ Failed to extract valid job data after 3 attempts');
+              }
+            } catch (error) {
+              log('❌ Error initializing job widget:', error);
+              if (attempt < 3) tryCreateWidget(attempt + 1);
             }
-          } catch (error) {
-            console.log('[AutoNote] Error initializing job widget:', error);
-          }
-        }, 1000); // Wait 1 second for page content to load
+          }, attempt * 1000); // 1s, 2s, 3s delays
+        };
+        
+        tryCreateWidget();
       }
     }
   }, 250);

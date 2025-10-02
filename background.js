@@ -5,27 +5,22 @@ const DEFAULTS = {
   autoSend: false,
   delayMs: 500,
   jitterMaxMs: 400,
-  recruiterTemplates: [
-    "Hi {firstName}, I’m a recent CS grad passionate about scalable web & mobile systems. I’d love to connect and learn more about opportunities where I can contribute and grow.",
-    "Hello {firstName}, I recently graduated in CS and have hands-on experience building production-level web & mobile apps. Excited to connect and stay on your radar for open roles.",
-    "Hi {firstName}, I’m a recent grad with experience creating scalable systems in web & mobile. Looking forward to connecting and exploring roles where I can bring value.",
-  ],
-  // Message mode
-  messageFlowEnabled: true,
-  messageAutoSend: false,
-  messageTemplate: "Hi {firstName}, great to connect here! I'm a new‑grad SWE focused on full‑stack/ML. Would love a quick chat about {company} — open to a brief call?",
+  // Recruiter templates (2 variants)
+  recruiterTpl1: "Hi {firstName}, I'm a recent CS grad passionate about scalable web & mobile systems. I'd love to connect and learn more about opportunities where I can contribute and grow.",
+  recruiterTpl2: "Hello {firstName}, I recently graduated in CS and have hands-on experience building production-level web & mobile apps. Excited to connect and stay on your radar for open roles.",
   // Alumni template
-  alumniTemplate: "Hi {firstName}, I’m a fellow IU alum and a recent CS grad focusing on SWE roles. I’m very interested in working at {company} and was wondering if you might be open to referring me. I’d greatly appreciate your help and would also love to hear about your experience there!",
-  // Custom templates
-  customTemplates: [
-    { title: '', body: '' },
-    { title: '', body: '' },
-    { title: '', body: '' }
-  ]
+  alumniTemplate: "Hi {firstName}, I'm a fellow IU alum and a recent CS grad focusing on SWE roles. I'm very interested in working at {company} and was wondering if you might be open to referring me. I'd greatly appreciate your help and would also love to hear about your experience there!",
+  // 0.1% Elite messages
+  eliteMessageA: "Hey {firstName}, LOVE what you're building at {company}. Would love to connect and stay in touch. \n~ Abhishek",
+  eliteMessageB: "Hey {firstName}, I'm Abhishek,\n- MS in CS\n- Expertise in Python, Javascript, AWS, React, SQL, etc.\n\nI'm quite interested in the SWE role.\n\nfancy a quick chat this week?",
+  // Post-application follow-up
+  postApplicationFollowUp: "Hi {firstName},\n\nI'm Abhishek, a New Grad SWE. Just applied for the {role} at {company}. Given my background in [TOP DIFFERENTIATOR], I believe I'm a great fit to maybe join your team. What would be the best next steps to kick off this process?\n\nBest,\nAbhishek",
+  // Message mode (for backwards compatibility)
+  messageFlowEnabled: true,
+  messageAutoSend: false
 };
 
 const METRICS_KEY = 'metrics_v1';
-// No daily cap anymore
 
 chrome.runtime.onInstalled.addListener(async () => {
   const existing = await chrome.storage.sync.get(null);
@@ -37,24 +32,31 @@ chrome.runtime.onStartup.addListener(async () => {
   await migrateTemplates();
 });
 
-// No alarms needed now that daily cap is removed
-
-// Gentle migration: set Alumni template and default connect template if missing or still using placeholder-y text
+// Gentle migration: update templates if needed
 async function migrateTemplates() {
   try {
     const sync = await chrome.storage.sync.get(null);
     const patch = {};
+    
+    // Migrate old recruiterTemplates array to new individual template format
+    if (Array.isArray(sync.recruiterTemplates)) {
+      patch.recruiterTpl1 = sync.recruiterTemplates[0] || DEFAULTS.recruiterTpl1;
+      patch.recruiterTpl2 = sync.recruiterTemplates[1] || DEFAULTS.recruiterTpl2;
+      delete patch.recruiterTemplates;
+    }
+    
+    // Ensure new templates exist
+    if (!sync.recruiterTpl1) patch.recruiterTpl1 = DEFAULTS.recruiterTpl1;
+    if (!sync.recruiterTpl2) patch.recruiterTpl2 = DEFAULTS.recruiterTpl2;
+    if (!sync.eliteMessageA) patch.eliteMessageA = DEFAULTS.eliteMessageA;
+    if (!sync.eliteMessageB) patch.eliteMessageB = DEFAULTS.eliteMessageB;
+    if (!sync.postApplicationFollowUp) patch.postApplicationFollowUp = DEFAULTS.postApplicationFollowUp;
+    
     const curAlumni = sync.alumniTemplate;
-    // Update if empty or if it contains bracket placeholders from old template
     if (!curAlumni || /\[[^\]]+\]/.test(curAlumni) || /I am an IU alum and I am connecting/.test(curAlumni)) {
       patch.alumniTemplate = DEFAULTS.alumniTemplate;
     }
-    if (!sync.defaultConnectTemplate) {
-      patch.defaultConnectTemplate = 'alumni';
-    }
-    if (!Array.isArray(sync.recruiterTemplates)) {
-      patch.recruiterTemplates = DEFAULTS.recruiterTemplates;
-    }
+    
     if (Object.keys(patch).length) await chrome.storage.sync.set(patch);
   } catch { /* noop */ }
 }

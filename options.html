@@ -2,219 +2,195 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewp            <label class="col">
-              <span>Recruiter template 3</span>
-              <textarea id="recruiterTpl3" rows="3" placeholder="Hi {firstName}, I'm a recent grad with experience creating scalable systems in web & mobile. Looking forward to connecting and exploring roles where I can bring value."></textarea>
-            </label>
-          </div>     </div>ent="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>LinkedIn Auto-Note — Settings</title>
-    <link rel="stylesheet" href="styles.css" />
+    <style>
+      :root { --bg:#fff; --fg:#222; --muted:#666; --border:#ddd; --primary:#0a66c2; }
+      body { margin:0; font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--fg); background:var(--bg); }
+      main { max-width:760px; margin:32px auto; padding:0 16px; }
+      h1 { margin:0 0 16px; font-size:1.6rem; }
+      section { border:1px solid var(--border); border-radius:8px; padding:16px; margin:16px 0; }
+      h2 { margin:0 0 12px; font-size:1.1rem; }
+      label { display:block; margin:12px 0; }
+      textarea, input, select, button { width:100%; box-sizing:border-box; padding:10px; border:1px solid var(--border); border-radius:6px; font:inherit; }
+      small { color:var(--muted); display:block; margin-top:6px; }
+      .row { display:flex; gap:12px; align-items:center; }
+      .row > label { flex:1; margin:0; }
+      .actions { display:flex; gap:12px; justify-content:flex-end; margin-top:12px; }
+      button { cursor:pointer; background:var(--primary); color:#fff; border:0; }
+      button:hover { opacity:0.9; }
+      .ghost { background:#f7f7f7; color:var(--fg); }
+      .template-section { display:none; }
+      .template-section.active { display:block; }
+    </style>
   </head>
   <body>
-    <main class="wrap">
-      <header>
-        <h1>LinkedIn Auto-Note Settings</h1>
-      </header>
+    <main>
+      <header><h1>LinkedIn Auto-Note Settings</h1></header>
 
-      <section class="card">
-        <h2>General Settings</h2>
-        <div class="form-group">
-          <label class="row">
+      <section>
+        <h2>General</h2>
+        <div class="row">
+          <label class="row" style="align-items:center;">
+            <input type="checkbox" id="enabled" style="width:auto; margin-right:8px;" />
             <span>Enable extension</span>
-            <input type="checkbox" id="enabled" />
-          </label>
-          <label class="col">
-            <span>Delay before actions (milliseconds)</span>
-            <input type="number" id="delayMs" min="0" step="50" placeholder="500" />
-            <small>How long to wait before executing actions. Increase if LinkedIn loads slowly.</small>
-          </label>
-          <label class="col">
-            <span>Random delay variation (milliseconds)</span>
-            <input type="number" id="jitterMaxMs" min="0" step="50" placeholder="400" />
-            <small>Adds randomness to timing to appear more natural.</small>
           </label>
         </div>
       </section>
 
-      <section class="card">
-        <h2>Follow-up Messages</h2>
-        <div class="grid2">
-          <label class="col">
-            <span>Accepted — Alumni (referral)</span>
-            <textarea id="followUpAcceptedAlumni" rows="3" placeholder="Hi {firstName} — thanks for connecting! I’m an IU alum and recent CS grad (F‑1 OPT) interested in {company}. If you’re open, could you refer me for [Job Title/ID]? I’d really appreciate it."></textarea>
-          </label>
-          <label class="col">
-            <span>Accepted — Recruiter/Hiring Manager</span>
-            <textarea id="followUpAcceptedRecruiter" rows="3" placeholder="Hi {firstName}, thanks for connecting. I’m a recent CS grad (F‑1 OPT) seeking full‑time SWE roles. I’ve built scalable web and mobile apps and would love to learn about any new openings at {company}."></textarea>
-          </label>
-        </div>
-        <div class="grid2">
-          <label class="col">
-            <span>Pending — Alumni (nudge)</span>
-            <textarea id="followUpPendingAlumni" rows="3" placeholder="Hi {firstName} — IU alum here. I’m very interested in {company}. If you’re open, could you refer me for [Job Title/ID]? Would really appreciate it. Thanks!"></textarea>
-          </label>
-          <label class="col">
-            <span>Pending — Recruiter/Hiring Manager (nudge)</span>
-            <textarea id="followUpPendingRecruiter" rows="3" placeholder="Hi {firstName}, I sent a connect request. I’m a recent CS grad (F‑1 OPT) seeking full‑time SWE roles. I’ve built scalable web and mobile apps and would love to learn about any openings at {company}. Thanks!"></textarea>
-          </label>
-        </div>
-        <small><strong>Tokens:</strong> {firstName}, {company}, {headline}, {location}, {lastCompany}, {role}, {school}, {mutualCount}</small>
-      </section>
+      <section>
+        <h2>Edit Templates</h2>
+        <label>
+          <span>Select template to edit</span>
+          <select id="templateSelector">
+            <option value="">-- Choose a template --</option>
+            <option value="recruiter">Connection Note (Recruiter)</option>
+            <option value="alumni">Connection Note (Alumni)</option>
+            <option value="elite">0.1% Elite Messages</option>
+            <option value="postApplication">Post-Application Follow-up</option>
+          </select>
+        </label>
 
-      <section class="card">
-        <h2>Connection Messages</h2>
-        <div class="form-group">
-          <label class="row">
-            <span>Auto-send connection requests</span>
-            <input type="checkbox" id="autoSend" />
+        <!-- Recruiter Template -->
+        <div id="recruiter-section" class="template-section">
+          <label>
+            <span>Recruiter template 1</span>
+            <textarea id="recruiterTpl1" rows="3" placeholder="Hi {firstName}, I'm a recent CS grad passionate about scalable web & mobile systems...">Hi {firstName}, I'm a recent CS grad passionate about scalable web & mobile systems. I'd love to connect and learn more about opportunities where I can contribute and grow.</textarea>
+            <small><strong>Tokens:</strong> {firstName}, {company}, {headline}, {location}, {role}</small>
           </label>
-          <small style="margin-top: -8px; color: var(--warning);">⚠️ Use with caution. Manual review is recommended.</small>
-        </div>
-
-        <div class="form-group">
-          <label class="col">
-            <span>Default template for Connect note</span>
-            <select id="defaultConnectTemplate">
-              <option value="audience">Audience-based (Tech Recruiter/Hiring Manager → recruiter templates)</option>
-              <option value="alumni">Alumni</option>
-            </select>
-            <small>Choose which saved template is used by default when inserting a Connect note.</small>
+          <label>
+            <span>Recruiter template 2</span>
+            <textarea id="recruiterTpl2" rows="3" placeholder="Hello {firstName}...">Hello {firstName}, I recently graduated in CS and have hands-on experience building production-level web & mobile apps. Excited to connect and stay on your radar for open roles.</textarea>
+            <small>Extension will rotate between templates for variety</small>
           </label>
         </div>
 
-        <div class="form-group">
-          <label class="col">
-            <span>Tech Recruiter / Hiring Manager templates (used when Audience-based is selected)</span>
-            <small>These four variants rotate to keep outreach natural.</small>
-          </label>
-          <div class="grid2">
-            <label class="col">
-              <span>Recruiter template 1</span>
-              <textarea id="recruiterTpl1" rows="3" placeholder="Hi {firstName}, I’m a recent CS grad passionate about scalable web & mobile systems. I’d love to connect and learn more about opportunities where I can contribute and grow."></textarea>
-            </label>
-            <label class="col">
-              <span>Recruiter template 2</span>
-              <textarea id="recruiterTpl2" rows="3" placeholder="Hello {firstName}, I recently graduated in CS and have hands-on experience building production-level web & mobile apps. Excited to connect and stay on your radar for open roles."></textarea>
-            </label>
-          </div>
-          <div class="grid2">
-            <label class="col">
-              <span>Recruiter template 3</span>
-              <textarea id="recruiterTpl3" rows="3" placeholder="Hi {firstName}, I’m a recent grad with experience creating scalable systems in web & mobile. Looking forward to connecting and exploring roles where I can bring value."></textarea>
-            </label>
-            <label class="col">
-            </label>
-          </div>
-          <small><strong>Tokens:</strong> {firstName}, {company}, {headline}, {location}, {lastCompany}, {role}, {school}, {mutualCount}</small>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2>Direct Messages</h2>
-        <div class="form-group">
-          <label class="row">
-            <span>Enable message flow</span>
-            <input type="checkbox" id="messageFlowEnabled" />
-          </label>
-          <label class="row">
-            <span>Auto-send messages</span>
-            <input type="checkbox" id="messageAutoSend" />
-          </label>
-          <small style="margin-top: -8px; color: var(--warning);">⚠️ Use with extreme caution. Consider manual sending.</small>
-        </div>
-        
-        <div class="form-group">
-          <label class="col">
-            <span>Message template</span>
-            <textarea id="messageTemplate" rows="4" placeholder="Hi {firstName}, great to connect here! I'm [Your Role] focused on [Your Skills]. Would love a quick chat about {company} — open to a brief call?"></textarea>
-            <small><strong>Available tokens:</strong> {firstName}, {company}, {headline}, {location}, {lastCompany}, {role}, {school}, {mutualCount}</small>
+        <!-- Alumni Template -->
+        <div id="alumni-section" class="template-section">
+          <label>
+            <span>Alumni template</span>
+            <textarea id="alumniTemplate" rows="4" placeholder="Hi {firstName}, fellow alum here!...">Hi {firstName}, I'm a fellow IU alum and a recent CS grad focusing on SWE roles. I'm very interested in working at {company} and was wondering if you might be open to referring me. I'd greatly appreciate your help and would also love to hear about your experience there!</textarea>
+            <small><strong>Tokens:</strong> {firstName}, {company}, {headline}, {school}</small>
           </label>
         </div>
 
-        <div class="form-group">
-          <label class="col">
-            <span>Referral request template</span>
-            <textarea id="referralTemplate" rows="6" placeholder="Hi {firstName}, I hope you're doing well! I noticed an opening for [Job Title, Job ID] at {company}. Given my experience in [Field/Industry], I genuinely believe I'd be a strong fit. Would you be willing to refer me for this position?"></textarea>
-            <small><strong>Available tokens:</strong> {firstName}, {company}, {headline}, {location}, {lastCompany}, {role}, {school}, {mutualCount}</small>
+        <!-- 0.1% Elite Templates -->
+        <div id="elite-section" class="template-section">
+          <label>
+            <span>0.1% Elite Message A</span>
+            <textarea id="eliteMessageA" rows="3" placeholder="Hey {firstName}, LOVE what you're building...">Hey {firstName}, LOVE what you're building at {company}. Would love to connect and stay in touch. 
+~ Abhishek</textarea>
+            <small><strong>Tokens:</strong> {firstName}, {company}</small>
+          </label>
+          <label>
+            <span>0.1% Elite Message B</span>
+            <textarea id="eliteMessageB" rows="6" placeholder="Hey {firstName}, I'm Abhishek...">Hey {firstName}, I'm Abhishek,
+- MS in CS
+- Expertise in Python, Javascript, AWS, React, SQL, etc.
+
+I'm quite interested in the SWE role.
+
+fancy a quick chat this week?</textarea>
+            <small><strong>Tokens:</strong> {firstName}<br>High-impact, personalized outreach for top opportunities</small>
+          </label>
+        </div>
+
+        <!-- Post-Application Template -->
+        <div id="postApplication-section" class="template-section">
+          <label>
+            <span>Post-application follow-up</span>
+            <textarea id="postApplicationFollowUp" rows="6" placeholder="Hi {firstName},&#10;&#10;I'm Abhishek, a New Grad SWE...">Hi {firstName},
+
+I'm Abhishek, a New Grad SWE. Just applied for the {role} at {company}. Given my background in [TOP DIFFERENTIATOR], I believe I'm a great fit to maybe join your team. What would be the best next steps to kick off this process?
+
+Best,
+Abhishek</textarea>
+            <small><strong>Tokens:</strong> {firstName}, {company}, {role}<br>Replace [TOP DIFFERENTIATOR] with your relevant skills/experience</small>
           </label>
         </div>
       </section>
 
-      <section class="card">
-        <h2>Custom Templates</h2>
-        <div class="grid2">
-          <label class="col">
-            <span>Template 1 title</span>
-            <input type="text" id="customTitle1" placeholder="e.g., Warm intro" />
-            <span>Template 1 body</span>
-            <textarea id="customBody1" rows="4" placeholder="Write your template... You can use tokens like {firstName} and {company}."></textarea>
-          </label>
-          <label class="col">
-            <span>Template 2 title</span>
-            <input type="text" id="customTitle2" placeholder="e.g., Cold outreach" />
-            <span>Template 2 body</span>
-            <textarea id="customBody2" rows="4" placeholder="Write your template..."></textarea>
-          </label>
-        </div>
-        <div class="grid2">
-          <label class="col">
-            <span>Template 3 title</span>
-            <input type="text" id="customTitle3" placeholder="Optional" />
-            <span>Template 3 body</span>
-            <textarea id="customBody3" rows="4" placeholder="Write your template..."></textarea>
-          </label>
-        </div>
-        <small><strong>Tip:</strong> Tokens available: {firstName}, {company}, {headline}, {location}, {lastCompany}, {role}, {school}, {mutualCount}</small>
-      </section>
-
-      <section class="card">
-        <h2>Alumni Messages</h2>
-        <div class="form-group">
-          <label class="col">
-            <span>Alumni guidance template</span>
-            <textarea id="alumniTemplate" rows="6" placeholder="Hi {firstName}, I’m a fellow IU alum and a recent CS grad focusing on SWE roles. I’m very interested in working at {company} and was wondering if you might be open to referring me. I’d greatly appreciate your help and would also love to hear about your experience there!"></textarea>
-            <small><strong>Available tokens:</strong> {firstName}, {company}, {headline}, {location}, {lastCompany}, {role}, {school}, {mutualCount}</small>
-          </label>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2>Message Preview</h2>
-        <div class="form-group">
-          <div class="row gap">
-            <input id="pFirst" placeholder="First name" style="flex: 1;" />
-            <input id="pCompany" placeholder="Company name" style="flex: 1;" />
-            <input id="pHeadline" placeholder="Job title/headline" style="flex: 2;" />
-          </div>
-          <div class="row gap">
-            <select id="pType" style="flex: 1;">
-              <option value="message">Direct Message</option>
-              <option value="connect">Connection Request</option>
-            </select>
-            <button id="render" class="success" style="flex: 0 0 auto;">Generate Preview</button>
-          </div>
-          <pre id="preview" class="preview">Click "Generate Preview" to see how your message will look with the sample data above.</pre>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2>Data Export</h2>
-        <div class="form-group">
-          <div class="row gap">
-            <button id="export" class="success">Export Leads to CSV</button>
-            <span id="status" role="status" aria-live="polite" style="flex: 1; text-align: right; font-weight: 500;"></span>
-          </div>
-          <small>Download a CSV file containing all your connection and messaging activity for analysis.</small>
-        </div>
-      </section>
-
-      <footer style="margin-top: 32px;">
-        <div class="row gap">
-          <button id="save" class="success" style="flex: 1;">Save Settings</button>
-          <button id="reset" class="ghost" style="flex: 0 0 auto;">Reset to Defaults</button>
-        </div>
+      <footer class="actions">
+        <button id="reset" class="ghost">Reset</button>
+        <button id="save">Save</button>
       </footer>
     </main>
-    <script src="options.js"></script>
+
+    <script>
+      const STORAGE_KEY = 'linkedinAutoNote_settings';
+      
+      // Show/hide template sections based on dropdown selection
+      document.getElementById('templateSelector').addEventListener('change', function() {
+        const selected = this.value;
+        document.querySelectorAll('.template-section').forEach(section => {
+          section.classList.remove('active');
+        });
+        if (selected) {
+          const targetSection = document.getElementById(selected + '-section');
+          if (targetSection) {
+            targetSection.classList.add('active');
+          }
+        }
+      });
+      
+      function loadSettings() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          try {
+            const settings = JSON.parse(saved);
+            document.getElementById('enabled').checked = settings.enabled !== false;
+            document.getElementById('recruiterTpl1').value = settings.recruiterTpl1 || "Hi {firstName}, I'm a recent CS grad passionate about scalable web & mobile systems. I'd love to connect and learn more about opportunities where I can contribute and grow.";
+            document.getElementById('recruiterTpl2').value = settings.recruiterTpl2 || "Hello {firstName}, I recently graduated in CS and have hands-on experience building production-level web & mobile apps. Excited to connect and stay on your radar for open roles.";
+            document.getElementById('alumniTemplate').value = settings.alumniTemplate || "Hi {firstName}, I'm a fellow IU alum and a recent CS grad focusing on SWE roles. I'm very interested in working at {company} and was wondering if you might be open to referring me. I'd greatly appreciate your help and would also love to hear about your experience there!";
+            document.getElementById('eliteMessageA').value = settings.eliteMessageA || "Hey {firstName}, LOVE what you're building at {company}. Would love to connect and stay in touch. \n~ Abhishek";
+            document.getElementById('eliteMessageB').value = settings.eliteMessageB || "Hey {firstName}, I'm Abhishek,\n- MS in CS\n- Expertise in Python, Javascript, AWS, React, SQL, etc.\n\nI'm quite interested in the SWE role.\n\nfancy a quick chat this week?";
+            document.getElementById('postApplicationFollowUp').value = settings.postApplicationFollowUp || "Hi {firstName},\n\nI'm Abhishek, a New Grad SWE. Just applied for the {role} at {company}. Given my background in [TOP DIFFERENTIATOR], I believe I'm a great fit to maybe join your team. What would be the best next steps to kick off this process?\n\nBest,\nAbhishek";
+          } catch (e) {
+            console.error('Failed to load settings:', e);
+          }
+        }
+      }
+      
+      function saveSettings() {
+        const settings = {
+          enabled: document.getElementById('enabled').checked,
+          recruiterTpl1: document.getElementById('recruiterTpl1').value.trim(),
+          recruiterTpl2: document.getElementById('recruiterTpl2').value.trim(),
+          alumniTemplate: document.getElementById('alumniTemplate').value.trim(),
+          eliteMessageA: document.getElementById('eliteMessageA').value.trim(),
+          eliteMessageB: document.getElementById('eliteMessageB').value.trim(),
+          postApplicationFollowUp: document.getElementById('postApplicationFollowUp').value.trim()
+        };
+        
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+          // Also sync to Chrome storage for extension access
+          if (typeof chrome !== 'undefined' && chrome.storage) {
+            chrome.storage.sync.set(settings);
+          }
+          alert('✅ Settings saved!');
+        } catch (e) {
+          console.error('Failed to save settings:', e);
+          alert('❌ Failed to save settings');
+        }
+      }
+      
+      function resetSettings() {
+        if (confirm('Reset all settings to defaults?')) {
+          localStorage.removeItem(STORAGE_KEY);
+          if (typeof chrome !== 'undefined' && chrome.storage) {
+            chrome.storage.sync.clear();
+          }
+          location.reload();
+        }
+      }
+      
+      // Load on page load
+      window.addEventListener('DOMContentLoaded', loadSettings);
+      
+      // Bind buttons
+      document.getElementById('save').addEventListener('click', saveSettings);
+      document.getElementById('reset').addEventListener('click', resetSettings);
+    </script>
   </body>
 </html>
