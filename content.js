@@ -21,18 +21,18 @@
 
   let settings = { ...DEFAULTS };
 
-  // CK 0.1% outreach templates
-  const CK_TEMPLATES = {
-    connectA: `Hey {firstName}, LOVE what you’re building at {company}. Would love to connect and stay in touch. ~ CK`,
-    connectB: `Hey {firstName}, I’m XX,
-- 3+ years in data/software
-- BS/MS in XX
+  // Abhishek 0.1% outreach templates
+  const Abhishek_Templates = {
+    connectA: `Hey {firstName}, LOVE what you’re building at {company}. Would love to connect and stay in touch. 
+~ Abhishek`,
+    connectB: `Hey {firstName}, I’m Abhishek,
+- MS in CS
 - Expertise in [challenge most relevant to them]
 
 I’m quite interested in X role.
 
-fancy a quick chat this week?
-~ CK`,
+fancy a quick chat this week?`
+   ,
     messageA: `Thanks for connecting, {firstName}! I’m working on [X] and thought it could be relevant to what you’re building at {company}. Happy to share a quick idea if useful.`,
     messageB: `Appreciate the connect, {firstName}! Curious — what’s keeping you busy these days at {company}?`
   };
@@ -280,7 +280,7 @@ fancy a quick chat this week?
       if (!act) return;
       if (act === 'cycle') { idx = (idx + 1) % options.length; updateLabel(); return; }
       if (act === 'ckNote') {
-        const tpl = ckIdxNote === 0 ? CK_TEMPLATES.connectA : CK_TEMPLATES.connectB;
+        const tpl = ckIdxNote === 0 ? Abhishek_Templates.connectA : Abhishek_Templates.connectB;
         const msg = capLinkedInLimit(fillTemplate(tpl, ctx));
         try {
           textarea.focus();
@@ -437,7 +437,7 @@ fancy a quick chat this week?
       const ctxMsg = getMessage();
       const selectedMsg = fillTemplate(getSelectedTemplateText(), { ...extractProfileContext(), firstName: extractFirstNameNear(composer), company: extractCompanyNear(composer) });
       if (act === 'ckMsg') {
-        const tpl = ckIdxMsg === 0 ? CK_TEMPLATES.messageA : CK_TEMPLATES.messageB;
+        const tpl = ckIdxMsg === 0 ? Abhishek_Templates.messageA : Abhishek_Templates.messageB;
         const filled = fillTemplate(tpl, { ...extractProfileContext(), firstName: extractFirstNameNear(composer), company: extractCompanyNear(composer) });
         insertIntoComposer(composer, filled);
         ckIdxMsg = (ckIdxMsg + 1) % 2;
@@ -579,7 +579,13 @@ fancy a quick chat this week?
       hostname.includes('angel.co') ||
       
       // Lever job pages
-      hostname.includes('lever.co')
+      hostname.includes('lever.co') ||
+      
+      // Workable job pages
+      (hostname.includes('workable.com') && (pathname.includes('/j/') || pathname.includes('/jobs/'))) ||
+      
+      // Workday job pages
+      hostname.includes('myworkdayjobs.com')
     );
   }
 
@@ -589,13 +595,20 @@ fancy a quick chat this week?
     if (location.hostname.includes('ashbyhq.com') || location.hostname.includes('.ashbyhq.com')) return 'ashby';
     if (location.hostname.includes('wellfound.com') || location.hostname.includes('angel.co')) return 'wellfound';
     if (location.hostname.includes('lever.co')) return 'lever';
+    if (location.hostname.includes('workable.com')) return 'workable';
+    if (location.hostname.includes('myworkdayjobs.com')) return 'workday';
     return 'unknown';
   }
 
   // Helper function to capitalize words
   function capitalizeWords(str) {
     if (!str) return 'Company';
-    return str.replace(/\b\w/g, l => l.toUpperCase());
+    // Handle special cases for company names
+    return str.replace(/\b\w/g, l => l.toUpperCase())
+              .replace(/\bAnd\b/g, 'and')
+              .replace(/\bThe\b/g, 'the')
+              .replace(/\bOf\b/g, 'of')
+              .replace(/\bFor\b/g, 'for');
   }
 
   // Helper function to extract company name from Ashby pages
@@ -626,6 +639,92 @@ fancy a quick chat this week?
     if (hostname.includes('.ashbyhq.com')) {
       const subdomain = hostname.replace('.ashbyhq.com', '');
       if (subdomain && subdomain !== 'jobs' && subdomain !== 'www') {
+        return capitalizeWords(subdomain.replace(/-/g, ' '));
+      }
+    }
+    
+    return 'Company';
+  }
+
+  // Helper function to extract company name from Workday pages
+  function extractCompanyFromWorkday() {
+    // Priority 1: Extract from Workday URL pattern first (most reliable)
+    if (location.hostname.includes('.myworkdayjobs.com')) {
+      const subdomain = location.hostname.split('.')[0];
+      if (subdomain && subdomain.length > 1) {
+        // Handle special company name formatting
+        let companyName = subdomain.replace(/-/g, ' ');
+        
+        // Special case handling for common patterns
+        if (companyName.toLowerCase() === 'ehealthinsurance') {
+          return 'eHealthInsurance';
+        }
+        
+        // Convert subdomain to proper company name
+        return capitalizeWords(companyName);
+      }
+    }
+    
+    // Priority 2: Try to find company name in page content (but avoid generic terms)
+    const workdayElements = document.querySelectorAll('[data-automation-id*="company"], .company-name, .employer-name');
+    for (const element of workdayElements) {
+      const text = element.textContent?.trim();
+      if (text && text.length > 2 && text.length < 50 && 
+          !text.toLowerCase().includes('job') && 
+          !text.toLowerCase().includes('position') && 
+          !text.toLowerCase().includes('workday') && 
+          !text.toLowerCase().includes('career') &&
+          !text.toLowerCase().includes('home') &&
+          text.toLowerCase() !== 'careers') {
+        return text;
+      }
+    }
+    
+    // Priority 3: Try to extract from page title (but avoid generic terms)
+    const title = document.title;
+    if (title.includes(' - ')) {
+      const parts = title.split(' - ');
+      for (const part of parts) {
+        const cleanPart = part.trim();
+        if (cleanPart && 
+            !cleanPart.toLowerCase().includes('workday') && 
+            !cleanPart.toLowerCase().includes('career') &&
+            cleanPart.toLowerCase() !== 'careers' &&
+            cleanPart.length > 2 && cleanPart.length < 50) {
+          return cleanPart;
+        }
+      }
+    }
+    
+    return 'Company';
+  }
+
+  // Helper function to extract company name from Workable pages
+  function extractCompanyFromWorkable() {
+    // Try to find company name in various Workable-specific places
+    const workableElements = document.querySelectorAll('.company-name, .employer-name, [data-testid*="company"], .job-header-company, .company-title, h1, h2');
+    for (const element of workableElements) {
+      const text = element.textContent?.trim();
+      if (text && text.length > 2 && text.length < 50 && !text.toLowerCase().includes('job') && !text.toLowerCase().includes('position') && !text.toLowerCase().includes('apply')) {
+        return text;
+      }
+    }
+    
+    // For apply.workable.com/company-name/j/job-id pattern
+    if (location.hostname === 'apply.workable.com') {
+      const pathParts = location.pathname.split('/').filter(p => p);
+      if (pathParts.length >= 1) {
+        const companySlug = pathParts[0];
+        if (companySlug && companySlug.length > 1) {
+          return capitalizeWords(companySlug.replace(/-/g, ' '));
+        }
+      }
+    }
+    
+    // For company.workable.com pattern
+    if (location.hostname.includes('.workable.com')) {
+      const subdomain = location.hostname.replace('.workable.com', '');
+      if (subdomain && subdomain !== 'apply' && subdomain !== 'www') {
         return capitalizeWords(subdomain.replace(/-/g, ' '));
       }
     }
@@ -728,6 +827,41 @@ fancy a quick chat this week?
                      capitalizeWords(location.hostname.split('.')[0].replace(/-/g, ' '));
         jobLocation = textOf('.location, [data-qa="posting-location"], .sort-by-location, .posting-location');
         jobId = location.pathname.match(/([^\/]+)$/)?.[1] || '';
+        break;
+
+      case 'workable':
+        // Workable job data extraction
+        jobTitle = textOf('h1, .job-title, .position-title, [data-testid="job-title"], .job-header-title') ||
+                  document.querySelector('title')?.textContent?.split(' - ')[0]?.split(' at ')[0];
+        
+        companyName = textOf('.company-name, .employer-name, .job-header-company, [data-testid*="company"], .company-title') ||
+                     document.title.split(' at ')[1]?.split(' |')[0]?.split(' -')[0] ||
+                     document.title.split(' - ')[1]?.split(' |')[0] ||
+                     document.querySelector('meta[property="og:site_name"]')?.content ||
+                     extractCompanyFromWorkable();
+        
+        jobLocation = textOf('.location, .job-location, [data-testid*="location"], .location-info');
+        // Handle Workable URL patterns: apply.workable.com/company/j/job-id or company.workable.com/jobs/job-id
+        jobId = location.pathname.match(/\/j\/([^\/\?]+)/)?.[1] || 
+                location.pathname.match(/\/jobs\/([^\/\?]+)/)?.[1] || 
+                location.pathname.split('/').pop() || '';
+        break;
+
+      case 'workday':
+        // Workday job data extraction
+        jobTitle = textOf('h1, [data-automation-id*="jobTitle"], .jobTitle, [data-automation-id*="jobPostingHeader"]') ||
+                  document.querySelector('title')?.textContent?.split(' - ')[0];
+        
+        // Prioritize URL-based company extraction for Workday
+        companyName = extractCompanyFromWorkday() ||
+                     textOf('[data-automation-id*="company"], .company-name, .companyName') ||
+                     document.title.split(' - ')[1]?.split(' |')[0] ||
+                     document.querySelector('meta[property="og:site_name"]')?.content;
+        
+        jobLocation = textOf('[data-automation-id*="location"], .location, .jobLocation');
+        // Handle Workday URL pattern: company.wd5.myworkdayjobs.com/en-US/CompanyName/job/Location/Title_JobID
+        jobId = location.pathname.match(/_([^\/\?]+)$/)?.[1] || 
+                location.pathname.split('/').pop() || '';
         break;
     }
     
@@ -980,6 +1114,54 @@ fancy a quick chat this week?
     try {
       widget.querySelector('.hiring-widget-close').addEventListener('click', () => {
         widget.remove();
+        // Mark this page as dismissed so widget doesn't reappear
+        const dismissKey = `hiring-widget-dismissed-${location.href.split('?')[0]}`;
+        sessionStorage.setItem(dismissKey, 'true');
+        
+        // Show a small "Show Hiring Finder" button in case user wants it back
+        setTimeout(() => {
+          if (!document.getElementById('hiring-finder-restore')) {
+            const restoreBtn = document.createElement('div');
+            restoreBtn.id = 'hiring-finder-restore';
+            restoreBtn.innerHTML = `
+              <button style="
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: #0a66c2;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 48px;
+                height: 48px;
+                font-size: 16px;
+                cursor: pointer;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                z-index: 2147483646;
+                transition: all 0.2s;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+              " title="Show Hiring Team Finder">👥</button>
+            `;
+            
+            restoreBtn.querySelector('button').addEventListener('click', () => {
+              sessionStorage.removeItem(dismissKey);
+              restoreBtn.remove();
+              const jobData = extractJobData();
+              if (jobData.companyName && jobData.companyName !== 'Company') {
+                createHiringTeamWidget(jobData);
+              }
+            });
+            
+            document.body.appendChild(restoreBtn);
+            
+            // Auto-remove restore button after 10 seconds
+            setTimeout(() => {
+              if (document.getElementById('hiring-finder-restore')) {
+                restoreBtn.remove();
+              }
+            }, 10000);
+          }
+        }, 500);
       });
     } catch (error) {
       console.log('[AutoNote] Error setting up widget event listeners:', error);
@@ -1186,16 +1368,22 @@ fancy a quick chat this week?
     
     // Initialize job posting widget if on job page (with delay for dynamic content)
     if (isJobPostingPage() && !document.getElementById('hiring-team-widget')) {
-      setTimeout(() => {
-        try {
-          const jobData = extractJobData();
-          if (jobData && jobData.companyName && jobData.companyName !== 'Company') {
-            createHiringTeamWidget(jobData);
+      // Check if user has dismissed the widget for this page
+      const dismissKey = `hiring-widget-dismissed-${location.href.split('?')[0]}`;
+      const wasDismissed = sessionStorage.getItem(dismissKey) === 'true';
+      
+      if (!wasDismissed) {
+        setTimeout(() => {
+          try {
+            const jobData = extractJobData();
+            if (jobData && jobData.companyName && jobData.companyName !== 'Company') {
+              createHiringTeamWidget(jobData);
+            }
+          } catch (error) {
+            console.log('[AutoNote] Error initializing job widget:', error);
           }
-        } catch (error) {
-          console.log('[AutoNote] Error initializing job widget:', error);
-        }
-      }, 1000); // Wait 1 second for page content to load
+        }, 1000); // Wait 1 second for page content to load
+      }
     }
   }, 250);
 
@@ -1222,6 +1410,10 @@ fancy a quick chat this week?
           if (existing) {
             existing.remove();
           } else {
+            // Clear dismissal flag when manually opening
+            const dismissKey = `hiring-widget-dismissed-${location.href.split('?')[0]}`;
+            sessionStorage.removeItem(dismissKey);
+            
             const jobData = extractJobData();
             if (jobData.companyName && jobData.companyName !== 'Company') {
               createHiringTeamWidget(jobData);

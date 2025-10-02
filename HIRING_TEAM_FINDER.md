@@ -34,6 +34,8 @@ The Hiring Team Finder is a powerful addition to your LinkedIn Auto-Note Connect
    - Ashby HQ (`jobs.ashbyhq.com/*/jobs/*`)
    - Wellfound (`wellfound.com/company/*/jobs/*`)
    - Lever (`jobs.lever.co/*/jobs/*`)
+   - Workable (`apply.workable.com/*/j/*`)
+   - Workday (`*.myworkdayjobs.com/*/*`)
 2. The Hiring Team Finder widget will automatically appear in the top-right corner
 3. Click "Find Recruiters" or "Find Hiring Managers" to discover key contacts
 
@@ -82,6 +84,8 @@ The Hiring Team Finder is a powerful addition to your LinkedIn Auto-Note Connect
 - **Ashby HQ**: `https://jobs.ashbyhq.com/*/jobs/*` and `https://*.ashbyhq.com/*/jobs/*`
 - **Wellfound**: `https://wellfound.com/company/*/jobs/*` and `https://angel.co/company/*/jobs/*`
 - **Lever**: `https://jobs.lever.co/*/jobs/*` and `https://*.lever.co/*/jobs/*`
+- **Workable**: `https://apply.workable.com/*/j/*` and `https://*.workable.com/jobs/*`
+- **Workday**: `https://*.myworkdayjobs.com/*/*`
 
 ### Data Extracted
 - Job title and company name
