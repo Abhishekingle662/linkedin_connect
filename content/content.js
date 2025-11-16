@@ -1,0 +1,458 @@
+// Connect Quick - LinkedIn Content Script
+console.log('[Connect Quick] Extension loaded');
+
+let messages = [];
+let isProcessing = false;
+let debugMode = false;
+let hasClickedAddNote = false;
+
+// Enable debug mode via console: window.connectQuickDebug = true
+if (typeof window.connectQuickDebug !== 'undefined') {
+  debugMode = window.connectQuickDebug;
+}
+
+// Load messages from storage
+async function loadMessages() {
+  try {
+    const result = await chrome.storage.sync.get(['messages']);
+    messages = result.messages || [];
+    console.log('Loaded messages:', messages.length);
+  } catch (error) {
+    console.error('Error loading messages:', error);
+  }
+}
+
+// Initialize
+loadMessages();
+
+// Listen for storage changes
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'sync' && changes.messages) {
+    loadMessages();
+  }
+});
+
+// Observe DOM for connect button clicks
+function observeConnectButtons() {
+  // Use MutationObserver to watch for modal dialogs
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node.nodeType === 1) { // Element node
+          checkForConnectionModal(node);
+        }
+      });
+    });
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+
+  // Also check existing modals on page load
+  setTimeout(() => {
+    const existingModals = document.querySelectorAll('[role="dialog"]');
+    existingModals.forEach(modal => checkForConnectionModal(modal));
+  }, 1000);
+}
+
+// Check if a node is or contains a connection modal
+function checkForConnectionModal(node) {
+  if (isProcessing) return;
+
+  // Check if it's a dialog/modal
+  if (node.getAttribute && node.getAttribute('role') === 'dialog') {
+    // Look for the connection invitation modal
+    const isConnectionModal = checkIfConnectionModal(node);
+
+    if (isConnectionModal) {
+      // Check if there's an "Add a note" button - if so, click it first
+      const addNoteButton = findAddNoteButton(node);
+      if (addNoteButton && !hasClickedAddNote) {
+        console.log('[Connect Quick] Auto-clicking "Add a note" button...');
+        hasClickedAddNote = true;
+        addNoteButton.click();
+        // Wait for textarea to appear after clicking
+        setTimeout(() => {
+          handleConnectionModal(node);
+          // Reset flag after handling
+          hasClickedAddNote = false;
+        }, 800);
+      } else if (!addNoteButton) {
+        // No "Add a note" button, textarea might already be visible
+        setTimeout(() => handleConnectionModal(node), 500);
+      }
+    }
+  }
+}
+
+// Find the "Add a note" button in a modal
+function findAddNoteButton(modal) {
+  const buttons = modal.querySelectorAll('button');
+  for (const btn of buttons) {
+    const btnText = btn.textContent || '';
+    if (btnText.includes('Add a note') || btnText.includes('add a note')) {
+      console.log('[Connect Quick] Found "Add a note" button');
+      return btn;
+    }
+  }
+  return null;
+}
+
+// Check if the modal is a connection invitation modal
+function checkIfConnectionModal(modal) {
+  // LinkedIn connection modals typically have specific text
+  const modalText = modal.textContent || '';
+  const modalHTML = modal.innerHTML || '';
+
+  // Check for common connection modal indicators
+  const hasConnectIndicator =
+    modalText.includes('Add a note') ||
+    modalText.includes('Personalize your invitation') ||
+    modalText.includes('add a note') ||
+    modalHTML.includes('send-invite') ||
+    modalHTML.includes('invitation-modal') ||
+    (modalText.includes('Connect') && modalText.includes('note'));
+
+  if (hasConnectIndicator) {
+    console.log('[Connect Quick] Connection modal detected!');
+  }
+
+  return hasConnectIndicator;
+}
+
+// Handle the connection modal
+async function handleConnectionModal(modal) {
+  if (isProcessing || messages.length === 0) return;
+
+  isProcessing = true;
+
+  try {
+    console.log('[Connect Quick] Modal detected, searching for textarea...');
+
+    // Try multiple selectors for the textarea
+    let noteTextarea = null;
+
+    // Common selectors used by LinkedIn
+    const selectors = [
+      'textarea[name="message"]',
+      'textarea[id*="custom-message"]',
+      'textarea[id*="message"]',
+      'textarea[aria-label*="message"]',
+      'textarea[aria-label*="note"]',
+      'textarea.msg-form__textarea',
+      'textarea.send-invite__custom-message',
+      'textarea',
+      'div[contenteditable="true"]' // LinkedIn sometimes uses contenteditable divs
+    ];
+
+    for (const selector of selectors) {
+      noteTextarea = modal.querySelector(selector);
+      if (noteTextarea) {
+        console.log('[Connect Quick] Found textarea with selector:', selector);
+        break;
+      }
+    }
+
+    if (!noteTextarea) {
+      console.log('[Connect Quick] No textarea in modal, searching entire document...');
+
+      // Search the entire document for textareas (LinkedIn might place it outside the modal)
+      const allTextareas = document.querySelectorAll('textarea');
+      console.log('[Connect Quick] All textareas in document:', allTextareas.length);
+
+      // Look for recently added or visible textareas that are empty
+      for (const ta of allTextareas) {
+        // Check if visible and empty
+        const isVisible = ta.offsetParent !== null;
+        const isEmpty = !ta.value || ta.value.trim() === '';
+
+        if (isVisible && isEmpty) {
+          noteTextarea = ta;
+          console.log('[Connect Quick] Found visible empty textarea:', ta.name || ta.id || ta.className);
+          break;
+        }
+      }
+
+      if (!noteTextarea) {
+        console.log('[Connect Quick] No suitable textarea found');
+        isProcessing = false;
+        return;
+      }
+    }
+
+    // Check if textarea is already filled
+    const currentValue = noteTextarea.value || noteTextarea.textContent || '';
+    if (currentValue.trim().length > 0) {
+      console.log('[Connect Quick] Textarea already has content, skipping autofill');
+      isProcessing = false;
+      return;
+    }
+
+    console.log('[Connect Quick] Showing message selector');
+    // Show message selector UI
+    showMessageSelector(modal, noteTextarea);
+
+  } catch (error) {
+    console.error('[Connect Quick] Error handling connection modal:', error);
+  }
+
+  isProcessing = false;
+}
+
+// Show message selector overlay
+function showMessageSelector(modal, textarea) {
+  // Remove any existing selector
+  const existingSelector = document.getElementById('cq-message-selector');
+  if (existingSelector) {
+    existingSelector.remove();
+  }
+
+  // Create selector overlay
+  const selector = document.createElement('div');
+  selector.id = 'cq-message-selector';
+  selector.className = 'cq-selector';
+
+  const selectorContent = `
+    <div class="cq-header">
+      <div class="cq-title">Select a message template</div>
+      <button class="cq-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="cq-messages">
+      ${messages.map((msg, index) => `
+        <div class="cq-message-option" data-index="${index}">
+          <div class="cq-message-name">${escapeHtml(msg.name)}</div>
+          <div class="cq-message-preview">${escapeHtml(msg.text.substring(0, 60))}${msg.text.length > 60 ? '...' : ''}</div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="cq-footer">
+      <button class="cq-skip-btn">Skip autofill</button>
+    </div>
+  `;
+
+  selector.innerHTML = selectorContent;
+
+  // Find a good place to insert it
+  const modalContent = modal.querySelector('[role="dialog"]') || modal;
+  modalContent.appendChild(selector);
+
+  // Add event listeners
+  selector.querySelector('.cq-close').addEventListener('click', () => {
+    selector.remove();
+  });
+
+  selector.querySelector('.cq-skip-btn').addEventListener('click', () => {
+    selector.remove();
+  });
+
+  // Message option click handlers
+  selector.querySelectorAll('.cq-message-option').forEach((option) => {
+    option.addEventListener('click', () => {
+      const index = parseInt(option.dataset.index);
+      const selectedMessage = messages[index];
+
+      if (selectedMessage) {
+        fillMessage(textarea, selectedMessage.text);
+        selector.remove();
+      }
+    });
+  });
+}
+
+// Extract profile information
+function extractProfileInfo() {
+  const info = {
+    name: '',
+    firstName: '',
+    lastName: '',
+    company: '',
+    title: ''
+  };
+
+  // Try to get name from various LinkedIn selectors
+  const nameSelectors = [
+    'h1.text-heading-xlarge',
+    'h1.inline.t-24',
+    '.pv-text-details__left-panel h1',
+    '.ph5.pb5 h1',
+    'div.mt2 h1'
+  ];
+
+  for (const selector of nameSelectors) {
+    const nameElement = document.querySelector(selector);
+    if (nameElement && nameElement.textContent.trim()) {
+      info.name = nameElement.textContent.trim();
+      break;
+    }
+  }
+
+  // Extract first and last name from full name
+  if (info.name) {
+    const nameParts = info.name.split(' ');
+    info.firstName = nameParts[0] || '';
+    info.lastName = nameParts.slice(1).join(' ') || '';
+  }
+
+  // Try to get company
+  const companySelectors = [
+    '.text-body-medium.break-words',
+    '.pv-text-details__left-panel .text-body-medium',
+    'div.mt2 div.text-body-medium'
+  ];
+
+  for (const selector of companySelectors) {
+    const companyElement = document.querySelector(selector);
+    if (companyElement && companyElement.textContent.includes('at ')) {
+      const companyText = companyElement.textContent.trim();
+      const atIndex = companyText.indexOf(' at ');
+      if (atIndex > -1) {
+        info.company = companyText.substring(atIndex + 4).trim();
+      }
+      break;
+    }
+  }
+
+  // Try to get title
+  const titleSelectors = [
+    '.text-body-medium.break-words',
+    '.pv-text-details__left-panel .text-body-medium'
+  ];
+
+  for (const selector of titleSelectors) {
+    const titleElement = document.querySelector(selector);
+    if (titleElement && titleElement.textContent.trim() && !titleElement.textContent.includes('at ')) {
+      info.title = titleElement.textContent.trim();
+      break;
+    }
+  }
+
+  console.log('[Connect Quick] Extracted profile info:', info);
+  return info;
+}
+
+// Replace placeholders in message
+function replacePlaceholders(text) {
+  const profileInfo = extractProfileInfo();
+
+  let result = text;
+  result = result.replace(/\[Name\]/g, profileInfo.name || '[Name]');
+  result = result.replace(/\[FirstName\]/g, profileInfo.firstName || '[FirstName]');
+  result = result.replace(/\[LastName\]/g, profileInfo.lastName || '[LastName]');
+  result = result.replace(/\[Company\]/g, profileInfo.company || '[Company]');
+  result = result.replace(/\[Title\]/g, profileInfo.title || '[Title]');
+
+  if (result !== text) {
+    console.log('[Connect Quick] Replaced placeholders:', { original: text.substring(0, 50), result: result.substring(0, 50) });
+  }
+
+  return result;
+}
+
+// Fill the message into the textarea
+function fillMessage(element, text) {
+  console.log('[Connect Quick] Filling message:', text.substring(0, 50) + '...');
+
+  // Replace placeholders with actual profile data
+  const finalText = replacePlaceholders(text);
+
+  // Handle both textarea and contenteditable elements
+  if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
+    element.value = finalText;
+  } else if (element.contentEditable === 'true') {
+    element.textContent = finalText;
+  }
+
+  // Trigger multiple events to ensure LinkedIn recognizes the change
+  const events = ['input', 'change', 'keyup', 'keydown'];
+  events.forEach(eventType => {
+    element.dispatchEvent(new Event(eventType, { bubbles: true }));
+    element.dispatchEvent(new InputEvent(eventType, {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data: text
+    }));
+  });
+
+  // Focus the element
+  element.focus();
+
+  // Move cursor to end
+  if (element.setSelectionRange && typeof element.value === 'string') {
+    element.setSelectionRange(text.length, text.length);
+  }
+
+  // Show visual feedback
+  element.classList.add('cq-filled');
+  setTimeout(() => {
+    element.classList.remove('cq-filled');
+  }, 1000);
+
+  console.log('[Connect Quick] Message autofilled successfully');
+}
+
+// Escape HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Start observing
+observeConnectButtons();
+
+// Re-initialize on navigation (LinkedIn is a SPA)
+let lastUrl = location.href;
+new MutationObserver(() => {
+  const currentUrl = location.href;
+  if (currentUrl !== lastUrl) {
+    lastUrl = currentUrl;
+    console.log('[Connect Quick] LinkedIn navigation detected, re-initializing');
+    setTimeout(() => {
+      loadMessages();
+      observeConnectButtons();
+    }, 1000);
+  }
+}).observe(document.body, { childList: true, subtree: true });
+
+// Manual debug function - call from console: window.connectQuickDebug()
+window.connectQuickDebug = function() {
+  console.log('[Connect Quick] === DEBUG INFO ===');
+  console.log('Messages loaded:', messages.length);
+  console.log('Is processing:', isProcessing);
+
+  const modals = document.querySelectorAll('[role="dialog"]');
+  console.log('Modals found:', modals.length);
+
+  modals.forEach((modal, index) => {
+    console.log(`\nModal ${index + 1}:`);
+    console.log('Text content (first 200 chars):', modal.textContent.substring(0, 200));
+
+    const textareas = modal.querySelectorAll('textarea');
+    console.log('Textareas in this modal:', textareas.length);
+
+    textareas.forEach((ta, i) => {
+      console.log(`  Textarea ${i + 1}:`, {
+        name: ta.name,
+        id: ta.id,
+        className: ta.className,
+        value: ta.value
+      });
+    });
+
+    const contentEditables = modal.querySelectorAll('[contenteditable="true"]');
+    console.log('Contenteditable elements:', contentEditables.length);
+  });
+
+  console.log('\n=== Attempting to show message selector ===');
+  if (modals.length > 0) {
+    // Try to manually trigger on the first modal
+    checkForConnectionModal(modals[0]);
+  } else {
+    console.log('No modals found. Open a connection modal first!');
+  }
+};
+
+console.log('[Connect Quick] Ready! Type window.connectQuickDebug() in console to debug.');
