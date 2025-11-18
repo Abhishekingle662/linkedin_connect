@@ -5,6 +5,11 @@ let messages = [];
 let isProcessing = false;
 let debugMode = false;
 let hasClickedAddNote = false;
+let activeField = null;
+let fieldListenerAttached = false;
+let lastEditableField = null;
+let manualTriggerButton = null;
+const TEXT_INPUT_TYPES = new Set(['text', 'search', 'url', 'tel', 'email', 'number']);
 
 // Enable debug mode via console: window.connectQuickDebug = true
 if (typeof window.connectQuickDebug !== 'undefined') {
@@ -192,7 +197,7 @@ async function handleConnectionModal(modal) {
 
     console.log('[Connect Quick] Showing message selector');
     // Show message selector UI
-    showMessageSelector(modal, noteTextarea);
+    showMessageSelector(noteTextarea, modal);
 
   } catch (error) {
     console.error('[Connect Quick] Error handling connection modal:', error);
@@ -202,14 +207,24 @@ async function handleConnectionModal(modal) {
 }
 
 // Show message selector overlay
-function showMessageSelector(modal, textarea) {
-  // Remove any existing selector
+function showMessageSelector(targetElement, modalContext = null, options = {}) {
+  const { allowNonEmpty = false } = options;
+
+  if (!allowNonEmpty) {
+    const currentValue = getFieldValue(targetElement);
+    if (currentValue && currentValue.trim().length > 0) {
+      console.log('[Connect Quick] Target already has content, aborting selector');
+      return;
+    }
+  }
+
+  activeField = targetElement;
+
   const existingSelector = document.getElementById('cq-message-selector');
   if (existingSelector) {
     existingSelector.remove();
   }
 
-  // Create selector overlay
   const selector = document.createElement('div');
   selector.id = 'cq-message-selector';
   selector.className = 'cq-selector';
@@ -233,36 +248,228 @@ function showMessageSelector(modal, textarea) {
   `;
 
   selector.innerHTML = selectorContent;
+  document.body.appendChild(selector);
 
-  // Find a good place to insert it
-  const modalContent = modal.querySelector('[role="dialog"]') || modal;
-  modalContent.appendChild(selector);
+  const baseCleanup = () => {
+    if (selector.parentElement) {
+      selector.remove();
+    }
+    if (activeField === targetElement) {
+      activeField = null;
+    }
+    document.removeEventListener('keydown', handleKeyDown);
+  };
+  const dragCleanup = makeSelectorDraggable(selector);
 
-  // Add event listeners
-  selector.querySelector('.cq-close').addEventListener('click', () => {
-    selector.remove();
-  });
+  const cleanup = () => {
+    dragCleanup();
+    baseCleanup();
+  };
 
-  selector.querySelector('.cq-skip-btn').addEventListener('click', () => {
-    selector.remove();
-  });
+  const handleKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      cleanup();
+    }
+  };
 
-  // Message option click handlers
+  document.addEventListener('keydown', handleKeyDown);
+
+  const closeButton = selector.querySelector('.cq-close');
+  if (closeButton) {
+    closeButton.addEventListener('click', cleanup);
+  }
+
+  const skipButton = selector.querySelector('.cq-skip-btn');
+  if (skipButton) {
+    skipButton.addEventListener('click', cleanup);
+  }
+
   selector.querySelectorAll('.cq-message-option').forEach((option) => {
     option.addEventListener('click', () => {
       const index = parseInt(option.dataset.index);
       const selectedMessage = messages[index];
 
       if (selectedMessage) {
-        fillMessage(textarea, selectedMessage.text);
-        selector.remove();
+        fillMessage(targetElement, selectedMessage.text, modalContext);
       }
+      cleanup();
     });
   });
+
+}
+
+function makeSelectorDraggable(selector) {
+  const header = selector.querySelector('.cq-header');
+  if (!header) return () => {};
+
+  header.style.cursor = 'grab';
+  let isDragging = false;
+  const dragState = {
+    startX: 0,
+    startY: 0,
+    startLeft: 0,
+    startTop: 0
+  };
+
+  const handleMouseDown = (event) => {
+    event.preventDefault();
+    const rect = selector.getBoundingClientRect();
+    selector.style.left = `${rect.left}px`;
+    selector.style.top = `${rect.top}px`;
+    selector.style.transform = 'none';
+    dragState.startX = event.clientX;
+    dragState.startY = event.clientY;
+    dragState.startLeft = rect.left;
+    dragState.startTop = rect.top;
+    isDragging = true;
+    header.style.cursor = 'grabbing';
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseMove = (event) => {
+    if (!isDragging) return;
+    const deltaX = event.clientX - dragState.startX;
+    const deltaY = event.clientY - dragState.startY;
+    selector.style.left = `${dragState.startLeft + deltaX}px`;
+    selector.style.top = `${dragState.startTop + deltaY}px`;
+  };
+
+  const handleMouseUp = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    header.style.cursor = 'grab';
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+
+  header.addEventListener('mousedown', handleMouseDown);
+
+  return () => {
+    header.removeEventListener('mousedown', handleMouseDown);
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+}
+
+function getFieldValue(field) {
+  if (!field) return '';
+  if (field.tagName === 'TEXTAREA' || field.tagName === 'INPUT') {
+    return field.value || '';
+  }
+  if (field.isContentEditable) {
+    return field.textContent || '';
+  }
+  return '';
+}
+
+function getEditableFieldFromElement(element) {
+  if (!element || !(element instanceof HTMLElement)) return null;
+
+  const field = element.closest('textarea, input, [contenteditable="true"]');
+  if (!field) return null;
+  if (field.closest('#cq-message-selector')) return null;
+  if (field.disabled || field.readOnly) return null;
+
+  if (field.matches('input')) {
+    const type = (field.getAttribute('type') || 'text').toLowerCase();
+    if (!TEXT_INPUT_TYPES.has(type)) {
+      return null;
+    }
+  }
+
+  if (field.getAttribute('aria-hidden') === 'true') {
+    return null;
+  }
+
+  return field;
+}
+
+function handleEditableFieldFocus(event) {
+  if (messages.length === 0) return;
+  const field = getEditableFieldFromElement(event.target);
+  if (!field) return;
+  if (activeField === field) return;
+
+  lastEditableField = field;
+
+  const value = getFieldValue(field);
+  if (value && value.trim().length > 0) {
+    return;
+  }
+
+  showMessageSelector(field);
+}
+
+function initEditableFieldListener() {
+  if (fieldListenerAttached) return;
+  fieldListenerAttached = true;
+  document.addEventListener('focusin', handleEditableFieldFocus, true);
+}
+
+function handleManualTriggerClick(event) {
+  event.preventDefault();
+  if (messages.length === 0) {
+    flashManualTrigger('No templates');
+    return;
+  }
+
+  const target = findManualTargetField();
+  if (!target) {
+    flashManualTrigger('Focus a text box');
+    return;
+  }
+
+  lastEditableField = target;
+  showMessageSelector(target, null, { allowNonEmpty: true });
+}
+
+function findManualTargetField() {
+  const activeFieldCandidate = getEditableFieldFromElement(document.activeElement);
+  if (activeFieldCandidate) {
+    return activeFieldCandidate;
+  }
+
+  if (lastEditableField && document.contains(lastEditableField)) {
+    return lastEditableField;
+  }
+
+  const fallback = document.querySelector('textarea:not([readonly]):not([disabled]), [contenteditable="true"]:not([aria-hidden="true"])');
+  return getEditableFieldFromElement(fallback);
+}
+
+function flashManualTrigger(message) {
+  if (!manualTriggerButton) return;
+  const original = manualTriggerButton.textContent;
+  manualTriggerButton.textContent = message;
+  manualTriggerButton.disabled = true;
+  setTimeout(() => {
+    manualTriggerButton.textContent = original;
+    manualTriggerButton.disabled = false;
+  }, 1400);
+}
+
+function createManualTriggerButton() {
+  if (!document.body) {
+    document.addEventListener('DOMContentLoaded', createManualTriggerButton, { once: true });
+    return;
+  }
+
+  if (manualTriggerButton && document.body.contains(manualTriggerButton)) return;
+
+  manualTriggerButton = document.createElement('button');
+  manualTriggerButton.id = 'cq-manual-trigger';
+  manualTriggerButton.type = 'button';
+  manualTriggerButton.innerText = 'Show templates';
+  manualTriggerButton.title = 'Open Connect Quick message picker';
+  manualTriggerButton.className = 'cq-manual-trigger';
+  manualTriggerButton.addEventListener('click', handleManualTriggerClick);
+
+  document.body.appendChild(manualTriggerButton);
 }
 
 // Extract profile information
-function extractProfileInfo() {
+function extractProfileInfo(modalContext = null) {
   const info = {
     name: '',
     firstName: '',
@@ -270,6 +477,11 @@ function extractProfileInfo() {
     company: '',
     title: ''
   };
+
+  const modalName = extractNameFromModal(modalContext);
+  if (modalName) {
+    info.name = modalName;
+  }
 
   // Try to get name from various LinkedIn selectors
   const nameSelectors = [
@@ -280,11 +492,13 @@ function extractProfileInfo() {
     'div.mt2 h1'
   ];
 
-  for (const selector of nameSelectors) {
-    const nameElement = document.querySelector(selector);
-    if (nameElement && nameElement.textContent.trim()) {
-      info.name = nameElement.textContent.trim();
-      break;
+  if (!info.name) {
+    for (const selector of nameSelectors) {
+      const nameElement = document.querySelector(selector);
+      if (nameElement && nameElement.textContent.trim()) {
+        info.name = nameElement.textContent.trim();
+        break;
+      }
     }
   }
 
@@ -332,16 +546,58 @@ function extractProfileInfo() {
   return info;
 }
 
+function extractNameFromModal(modal) {
+  const dialog = modal || document.querySelector('[role="dialog"]');
+  if (!dialog) {
+    return '';
+  }
+
+  const selectorList = [
+    '.invitation-card__name',
+    '.send-invite__header h2',
+    '.artdeco-modal__header h2',
+    '.artdeco-modal__content h1',
+    '.artdeco-modal__content h2',
+    '.artdeco-modal__content h3',
+    'h1',
+    'h2',
+    'h3',
+    'strong',
+    'span[dir="auto"]'
+  ];
+
+  const candidates = dialog.querySelectorAll(selectorList.join(','));
+
+  for (const candidate of candidates) {
+    const text = (candidate.textContent || '').trim();
+    if (isLikelyName(text)) {
+      return text;
+    }
+  }
+
+  return '';
+}
+
+function isLikelyName(text) {
+  if (!text) return false;
+  const trimmed = text.trim();
+  if (trimmed.length < 2 || trimmed.length > 50) return false;
+  if (/connect|note|invitation|message|add|personalize/i.test(trimmed)) return false;
+  const namePattern = /^[A-Za-zÀ-ÖØ-öø-ÿ'’\-\.\s]+$/;
+  return namePattern.test(trimmed);
+}
+
 // Replace placeholders in message
-function replacePlaceholders(text) {
-  const profileInfo = extractProfileInfo();
+function replacePlaceholders(text, modalContext = null) {
+  const profileInfo = extractProfileInfo(modalContext);
 
   let result = text;
-  result = result.replace(/\[Name\]/g, profileInfo.name || '[Name]');
-  result = result.replace(/\[FirstName\]/g, profileInfo.firstName || '[FirstName]');
-  result = result.replace(/\[LastName\]/g, profileInfo.lastName || '[LastName]');
-  result = result.replace(/\[Company\]/g, profileInfo.company || '[Company]');
-  result = result.replace(/\[Title\]/g, profileInfo.title || '[Title]');
+  const fallbackName = profileInfo.name || profileInfo.firstName || 'there';
+  result = result.replace(/\[Name\]/g, fallbackName);
+  result = result.replace(/\[FirstName\]/g, profileInfo.firstName || fallbackName);
+  result = result.replace(/\[LastName\]/g, profileInfo.lastName || '');
+  result = result.replace(/\[Company\]/g, profileInfo.company || '');
+  result = result.replace(/\[Title\]/g, profileInfo.title || '');
 
   if (result !== text) {
     console.log('[Connect Quick] Replaced placeholders:', { original: text.substring(0, 50), result: result.substring(0, 50) });
@@ -351,46 +607,100 @@ function replacePlaceholders(text) {
 }
 
 // Fill the message into the textarea
-function fillMessage(element, text) {
+function fillMessage(element, text, modalContext = null) {
   console.log('[Connect Quick] Filling message:', text.substring(0, 50) + '...');
 
-  // Replace placeholders with actual profile data
-  const finalText = replacePlaceholders(text);
+  const finalText = replacePlaceholders(text, modalContext);
 
-  // Handle both textarea and contenteditable elements
   if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
     element.value = finalText;
-  } else if (element.contentEditable === 'true') {
+  } else if (element.isContentEditable || element.getAttribute('role') === 'textbox') {
+    setContentEditableValue(element, finalText);
+  } else {
     element.textContent = finalText;
   }
 
-  // Trigger multiple events to ensure LinkedIn recognizes the change
-  const events = ['input', 'change', 'keyup', 'keydown'];
-  events.forEach(eventType => {
-    element.dispatchEvent(new Event(eventType, { bubbles: true }));
-    element.dispatchEvent(new InputEvent(eventType, {
-      bubbles: true,
-      cancelable: true,
-      inputType: 'insertText',
-      data: text
-    }));
-  });
+  triggerInputEvents(element, finalText);
 
-  // Focus the element
   element.focus();
 
-  // Move cursor to end
   if (element.setSelectionRange && typeof element.value === 'string') {
-    element.setSelectionRange(text.length, text.length);
+    element.setSelectionRange(finalText.length, finalText.length);
+  } else {
+    moveCursorToEnd(element);
   }
 
-  // Show visual feedback
   element.classList.add('cq-filled');
   setTimeout(() => {
     element.classList.remove('cq-filled');
   }, 1000);
 
   console.log('[Connect Quick] Message autofilled successfully');
+}
+
+function setContentEditableValue(element, text) {
+  if (!element) return;
+  element.focus();
+
+  const selection = window.getSelection();
+  if (!selection) {
+    element.innerHTML = '';
+    element.appendChild(document.createTextNode(text));
+    return;
+  }
+
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  range.deleteContents();
+
+  const inserted = document.execCommand('insertText', false, text);
+  if (!inserted) {
+    element.innerHTML = '';
+    element.appendChild(document.createTextNode(text));
+  }
+
+  range.selectNodeContents(element);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+function moveCursorToEnd(element) {
+  if (!element) return;
+  const selection = window.getSelection();
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  range.collapse(false);
+  if (selection) {
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+}
+
+function triggerInputEvents(element, text) {
+  if (!element) return;
+
+  const inputTypes = ['beforeinput', 'input', 'textInput'];
+  inputTypes.forEach((type) => {
+    const eventInit = {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data: text
+    };
+    let event;
+    try {
+      event = new InputEvent(type, eventInit);
+    } catch (err) {
+      event = new Event(type, { bubbles: true, cancelable: true });
+    }
+    element.dispatchEvent(event);
+  });
+
+  ['change', 'keyup', 'keydown', 'paste'].forEach((eventType) => {
+    element.dispatchEvent(new Event(eventType, { bubbles: true }));
+  });
 }
 
 // Escape HTML
@@ -402,19 +712,23 @@ function escapeHtml(text) {
 
 // Start observing
 observeConnectButtons();
+initEditableFieldListener();
+createManualTriggerButton();
 
 // Re-initialize on navigation (LinkedIn is a SPA)
 let lastUrl = location.href;
-new MutationObserver(() => {
-  const currentUrl = location.href;
-  if (currentUrl !== lastUrl) {
-    lastUrl = currentUrl;
-    console.log('[Connect Quick] LinkedIn navigation detected, re-initializing');
-    setTimeout(() => {
-      loadMessages();
-      observeConnectButtons();
-    }, 1000);
-  }
+  new MutationObserver(() => {
+    const currentUrl = location.href;
+    if (currentUrl !== lastUrl) {
+      lastUrl = currentUrl;
+      console.log('[Connect Quick] LinkedIn navigation detected, re-initializing');
+      setTimeout(() => {
+        loadMessages();
+        observeConnectButtons();
+        initEditableFieldListener();
+        createManualTriggerButton();
+      }, 1000);
+    }
 }).observe(document.body, { childList: true, subtree: true });
 
 // Manual debug function - call from console: window.connectQuickDebug()

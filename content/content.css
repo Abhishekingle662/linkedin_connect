@@ -18,6 +18,32 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
+.cq-manual-trigger {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10001;
+  background: #0077b5;
+  color: white;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cq-manual-trigger:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.cq-manual-trigger:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
 .cq-header {
   display: flex;
   justify-content: space-between;
@@ -27,11 +53,17 @@
   background: linear-gradient(135deg, #0077b5 0%, #005885 100%);
   color: white;
   border-radius: 8px 8px 0 0;
+  cursor: grab;
+  user-select: none;
 }
 
 .cq-title {
   font-size: 16px;
   font-weight: 600;
+}
+
+.cq-header:active {
+  cursor: grabbing;
 }
 
 .cq-close {
