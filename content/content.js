@@ -9,6 +9,7 @@ let activeField = null;
 let fieldListenerAttached = false;
 let lastEditableField = null;
 let manualTriggerButton = null;
+let autoOpenSuppressed = false;
 const TEXT_INPUT_TYPES = new Set(['text', 'search', 'url', 'tel', 'email', 'number']);
 
 // Enable debug mode via console: window.connectQuickDebug = true
@@ -197,7 +198,7 @@ async function handleConnectionModal(modal) {
 
     console.log('[Connect Quick] Showing message selector');
     // Show message selector UI
-    showMessageSelector(noteTextarea, modal);
+    showMessageSelector(noteTextarea, modal, { autoTriggered: true });
 
   } catch (error) {
     console.error('[Connect Quick] Error handling connection modal:', error);
@@ -208,7 +209,11 @@ async function handleConnectionModal(modal) {
 
 // Show message selector overlay
 function showMessageSelector(targetElement, modalContext = null, options = {}) {
-  const { allowNonEmpty = false } = options;
+  const { allowNonEmpty = false, autoTriggered = false, forceShow = false } = options;
+
+  if (autoOpenSuppressed && !forceShow) {
+    return;
+  }
 
   if (!allowNonEmpty) {
     const currentValue = getFieldValue(targetElement);
@@ -250,6 +255,13 @@ function showMessageSelector(targetElement, modalContext = null, options = {}) {
   selector.innerHTML = selectorContent;
   document.body.appendChild(selector);
 
+  const markSuppressed = () => {
+    if (autoTriggered) {
+      autoOpenSuppressed = true;
+      console.log('[Connect Quick] Auto-open disabled for this page');
+    }
+  };
+
   const baseCleanup = () => {
     if (selector.parentElement) {
       selector.remove();
@@ -261,14 +273,17 @@ function showMessageSelector(targetElement, modalContext = null, options = {}) {
   };
   const dragCleanup = makeSelectorDraggable(selector);
 
-  const cleanup = () => {
+  const cleanup = (suppress = false) => {
+    if (suppress) {
+      markSuppressed();
+    }
     dragCleanup();
     baseCleanup();
   };
 
   const handleKeyDown = (event) => {
     if (event.key === 'Escape') {
-      cleanup();
+      cleanup(autoTriggered);
     }
   };
 
@@ -276,12 +291,12 @@ function showMessageSelector(targetElement, modalContext = null, options = {}) {
 
   const closeButton = selector.querySelector('.cq-close');
   if (closeButton) {
-    closeButton.addEventListener('click', cleanup);
+    closeButton.addEventListener('click', () => cleanup(autoTriggered));
   }
 
   const skipButton = selector.querySelector('.cq-skip-btn');
   if (skipButton) {
-    skipButton.addEventListener('click', cleanup);
+    skipButton.addEventListener('click', () => cleanup(false));
   }
 
   selector.querySelectorAll('.cq-message-option').forEach((option) => {
@@ -292,7 +307,7 @@ function showMessageSelector(targetElement, modalContext = null, options = {}) {
       if (selectedMessage) {
         fillMessage(targetElement, selectedMessage.text, modalContext);
       }
-      cleanup();
+      cleanup(false);
     });
   });
 
@@ -308,11 +323,14 @@ function makeSelectorDraggable(selector) {
     startX: 0,
     startY: 0,
     startLeft: 0,
-    startTop: 0
+    startTop: 0,
+    offsetX: 0,
+    offsetY: 0
   };
 
   const handleMouseDown = (event) => {
     event.preventDefault();
+    selector.style.right = 'auto';
     const rect = selector.getBoundingClientRect();
     selector.style.left = `${rect.left}px`;
     selector.style.top = `${rect.top}px`;
@@ -321,6 +339,8 @@ function makeSelectorDraggable(selector) {
     dragState.startY = event.clientY;
     dragState.startLeft = rect.left;
     dragState.startTop = rect.top;
+    dragState.offsetX = event.clientX - rect.left;
+    dragState.offsetY = event.clientY - rect.top;
     isDragging = true;
     header.style.cursor = 'grabbing';
     document.addEventListener('mousemove', handleMouseMove);
@@ -329,10 +349,12 @@ function makeSelectorDraggable(selector) {
 
   const handleMouseMove = (event) => {
     if (!isDragging) return;
-    const deltaX = event.clientX - dragState.startX;
-    const deltaY = event.clientY - dragState.startY;
-    selector.style.left = `${dragState.startLeft + deltaX}px`;
-    selector.style.top = `${dragState.startTop + deltaY}px`;
+    const newLeft = event.clientX - dragState.offsetX;
+    const newTop = event.clientY - dragState.offsetY;
+    selector.style.right = 'auto';
+    selector.style.left = `${newLeft}px`;
+    selector.style.top = `${newTop}px`;
+    selector.style.transform = 'none';
   };
 
   const handleMouseUp = () => {
@@ -386,6 +408,7 @@ function getEditableFieldFromElement(element) {
 }
 
 function handleEditableFieldFocus(event) {
+  if (autoOpenSuppressed) return;
   if (messages.length === 0) return;
   const field = getEditableFieldFromElement(event.target);
   if (!field) return;
@@ -398,7 +421,7 @@ function handleEditableFieldFocus(event) {
     return;
   }
 
-  showMessageSelector(field);
+  showMessageSelector(field, null, { autoTriggered: true });
 }
 
 function initEditableFieldListener() {
@@ -421,7 +444,7 @@ function handleManualTriggerClick(event) {
   }
 
   lastEditableField = target;
-  showMessageSelector(target, null, { allowNonEmpty: true });
+  showMessageSelector(target, null, { allowNonEmpty: true, forceShow: true });
 }
 
 function findManualTargetField() {
