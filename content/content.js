@@ -658,7 +658,84 @@ function fillMessage(element, text, modalContext = null) {
     element.classList.remove('cq-filled');
   }, 1000);
 
+  // Save lead information to CRM
+  saveLead(finalText, modalContext);
+
   console.log('[Connect Quick] Message autofilled successfully');
+}
+
+// Save lead data to CRM
+function saveLead(messageText, modalContext = null) {
+  try {
+    const profileInfo = extractProfileInfo(modalContext);
+    
+    const leadData = {
+      firstName: profileInfo.firstName || '',
+      lastName: profileInfo.lastName || '',
+      email: extractEmail() || '',
+      company: profileInfo.company || '',
+      title: profileInfo.title || '',
+      profileUrl: window.location.href || '',
+      messageUsed: messageText || '',
+      notes: ''
+    };
+
+    // Only save if we have at least a name
+    if (leadData.firstName || leadData.lastName) {
+      // Send lead data to popup/background via message
+      chrome.runtime.sendMessage({
+        action: 'saveLead',
+        data: leadData
+      }, (response) => {
+        if (response && response.success) {
+          console.log('[Connect Quick CRM] Lead saved successfully');
+        }
+      });
+    }
+  } catch (error) {
+    console.error('[Connect Quick CRM] Error saving lead:', error);
+  }
+}
+
+// Extract email from LinkedIn profile
+function extractEmail() {
+  try {
+    // Try various selectors for email
+    const emailSelectors = [
+      'a[href^="mailto:"]',
+      '.ci-email-address',
+      '.pv-contact-info__email'
+    ];
+
+    for (const selector of emailSelectors) {
+      const emailElement = document.querySelector(selector);
+      if (emailElement) {
+        const href = emailElement.getAttribute('href');
+        if (href && href.startsWith('mailto:')) {
+          return href.substring(7); // Remove "mailto:" prefix
+        }
+        const text = emailElement.textContent.trim();
+        if (text && text.includes('@')) {
+          return text;
+        }
+      }
+    }
+
+    // If on profile page, try to look in common email display patterns
+    const mainContent = document.querySelector('.pv-contact-info__contact-type');
+    if (mainContent) {
+      const links = mainContent.querySelectorAll('a');
+      for (const link of links) {
+        const href = link.getAttribute('href') || '';
+        if (href.includes('mailto:')) {
+          return href.substring(7);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[Connect Quick] Error extracting email:', error);
+  }
+  return '';
 }
 
 function setContentEditableValue(element, text) {

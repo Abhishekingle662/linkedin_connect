@@ -45,6 +45,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Keep the message channel open for async response
   }
 
+  if (request.action === 'saveLead') {
+    // Save lead data to storage
+    chrome.storage.sync.get(['leads'], async (result) => {
+      try {
+        let leads = result.leads || [];
+        
+        const newLead = {
+          id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+          firstName: request.data.firstName || '',
+          lastName: request.data.lastName || '',
+          email: request.data.email || '',
+          company: request.data.company || '',
+          title: request.data.title || '',
+          profileUrl: request.data.profileUrl || '',
+          messageUsed: request.data.messageUsed || '',
+          timestamp: Date.now(),
+          notes: request.data.notes || ''
+        };
+
+        leads.push(newLead);
+        await chrome.storage.sync.set({ leads });
+        
+        console.log('[Connect Quick CRM] Lead saved:', newLead.firstName, newLead.lastName);
+        sendResponse({ success: true });
+      } catch (error) {
+        console.error('[Connect Quick CRM] Error saving lead:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    });
+    return true; // Keep the message channel open for async response
+  }
+
   if (request.action === 'logEvent') {
     console.log('[Content Script]', request.event, request.data);
   }

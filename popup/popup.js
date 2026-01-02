@@ -10,11 +10,34 @@ const messagesList = document.getElementById('messagesList');
 const emptyState = document.getElementById('emptyState');
 const charCount = document.getElementById('charCount');
 
+// Tab elements
+const tabBtns = document.querySelectorAll('.tab-btn');
+const tabContents = document.querySelectorAll('.tab-content');
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   loadMessages();
   setupEventListeners();
+  setupTabNavigation();
+  initializeLeads(); // Initialize CRM leads
 });
+
+// Setup tab navigation
+function setupTabNavigation() {
+  tabBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tabName = btn.getAttribute('data-tab');
+      
+      // Remove active class from all tabs and contents
+      tabBtns.forEach((b) => b.classList.remove('active'));
+      tabContents.forEach((content) => content.classList.remove('active'));
+      
+      // Add active class to clicked tab and corresponding content
+      btn.classList.add('active');
+      document.getElementById(tabName).classList.add('active');
+    });
+  });
+}
 
 // Setup event listeners
 function setupEventListeners() {

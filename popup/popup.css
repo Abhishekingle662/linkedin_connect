@@ -277,3 +277,322 @@ header h1 {
 .messages-section::-webkit-scrollbar-thumb:hover {
   background: #000000;
 }
+/* Tab Navigation */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 3px solid var(--border);
+  background: var(--bg);
+  padding: 0;
+  margin: 0;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  outline: none;
+}
+
+.tab-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.tab-btn.active {
+  background: var(--primary);
+  border-bottom-color: var(--primary);
+  box-shadow: inset 0 -3px 0 var(--border);
+}
+
+.tab-icon {
+  font-size: 16px;
+}
+
+.tab-content {
+  display: none;
+  flex: 1;
+  overflow-y: auto;
+  max-height: calc(600px - 180px);
+}
+
+.tab-content.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* CRM Styles */
+.crm-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+}
+
+.crm-header {
+  padding: 15px;
+  background: var(--bg);
+  border-bottom: 3px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.crm-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.crm-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.crm-btn {
+  padding: 8px 12px;
+  font-size: 12px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.btn-icon {
+  font-size: 14px;
+}
+
+.crm-filter {
+  padding: 12px 15px;
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+}
+
+.filter-input {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  transition: border-color 0.3s;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: var(--text);
+}
+
+#leadsContainer {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.leads-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  background: var(--surface);
+}
+
+.leads-table thead {
+  background: var(--header);
+  border-bottom: 3px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.leads-table th {
+  padding: 10px;
+  text-align: left;
+  font-weight: 800;
+  border-right: 1px solid var(--border);
+  color: var(--text);
+}
+
+.leads-table th:last-child {
+  border-right: none;
+}
+
+.leads-table td {
+  padding: 10px;
+  border-bottom: 1px solid #e0e0e0;
+  border-right: 1px solid #e0e0e0;
+}
+
+.leads-table td:last-child {
+  border-right: none;
+}
+
+.leads-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.leads-table tbody tr:hover {
+  background-color: #f5f5f5;
+}
+
+.lead-name {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.lead-company,
+.lead-title {
+  color: #333;
+}
+
+.lead-message {
+  color: #666;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lead-date,
+.lead-time {
+  color: #999;
+  white-space: nowrap;
+}
+
+.lead-actions {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.view-lead-btn,
+.delete-lead-btn {
+  background: none;
+  border: 1px solid var(--border);
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: transform 0.1s ease;
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+}
+
+.view-lead-btn:hover,
+.delete-lead-btn:hover {
+  transform: translate(-1px, -1px);
+}
+
+/* Lead Details Modal */
+.lead-details-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.lead-details-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+.lead-details-content {
+  position: relative;
+  background: var(--surface);
+  border: 3px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow);
+  z-index: 1001;
+}
+
+.lead-details-content h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 18px;
+  color: var(--text);
+}
+
+.detail-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.detail-label {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.detail-value {
+  color: #333;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.detail-link {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.detail-link:hover {
+  text-decoration: underline;
+}
+
+/* Scrollbar styling for leads */
+#leadsContainer::-webkit-scrollbar {
+  width: 8px;
+}
+
+#leadsContainer::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+#leadsContainer::-webkit-scrollbar-thumb {
+  background: var(--text);
+  border-radius: 4px;
+}
+
+#leadsContainer::-webkit-scrollbar-thumb:hover {
+  background: #000000;
+}
+
+body {
+  max-height: 700px;
+}

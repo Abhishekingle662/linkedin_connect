@@ -5,7 +5,9 @@
   "description": "Quickly send personalized connection messages on LinkedIn with your custom message library",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "identity",
+    "identity.getAuthorizationToken"
   ],
   "host_permissions": [
     "https://www.linkedin.com/*"
