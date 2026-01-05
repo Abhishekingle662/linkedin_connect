@@ -463,7 +463,8 @@ function handleManualTriggerClick(event) {
   }
 
   lastEditableField = target;
-  showMessageSelector(target, null, { allowNonEmpty: true, forceShow: true });
+  const modalContext = target.closest('[role="dialog"]');
+  showMessageSelector(target, modalContext, { allowNonEmpty: true, forceShow: true });
 }
 
 function findManualTargetField() {
@@ -711,18 +712,27 @@ function saveLead(messageText, modalContext = null) {
       notes: ''
     };
 
-    // Only save if we have at least a name
-    if (leadData.firstName || leadData.lastName) {
-      // Send lead data to popup/background via message
-      chrome.runtime.sendMessage({
-        action: 'saveLead',
-        data: leadData
-      }, (response) => {
-        if (response && response.success) {
-          console.log('[Connect Quick CRM] Lead saved successfully');
-        }
-      });
+    // Only skip if we somehow have no message content
+    if (!leadData.messageUsed || !leadData.messageUsed.trim()) {
+      return;
     }
+
+    // Send lead data to popup/background via message
+    chrome.runtime.sendMessage({
+      action: 'saveLead',
+      data: leadData
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Connect Quick CRM] Message send failed:', chrome.runtime.lastError.message);
+        return;
+      }
+
+      if (response && response.success) {
+        console.log('[Connect Quick CRM] Lead saved successfully');
+      } else {
+        console.error('[Connect Quick CRM] Lead save failed or no response', response);
+      }
+    });
   } catch (error) {
     console.error('[Connect Quick CRM] Error saving lead:', error);
   }

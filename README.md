@@ -19,6 +19,8 @@ A Chrome extension that helps you quickly send personalized connection messages 
 3. Enable "Developer mode" in the top right corner
 4. Click "Load unpacked" and select the extension directory
 5. Generate icons:
+## Migration Note
+- Existing leads previously stored in sync won’t auto-migrate. If you need them, we can add a one-time migration from sync → local.
    - Open `icons/create-icons.html` in your browser
    - Right-click each canvas and save as PNG with the correct filename (icon16.png, icon48.png, icon128.png)
    - Save all icons in the `icons/` directory

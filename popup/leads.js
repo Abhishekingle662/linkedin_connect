@@ -31,7 +31,7 @@ function setupLeadsEventListeners() {
 // Load leads from storage
 async function loadLeads() {
   try {
-    const result = await chrome.storage.sync.get(['leads']);
+    const result = await chrome.storage.local.get(['leads']);
     currentLeads = result.leads || [];
     renderLeads(currentLeads);
   } catch (error) {
@@ -42,7 +42,7 @@ async function loadLeads() {
 // Save a new lead
 async function saveLead(leadData) {
   try {
-    const result = await chrome.storage.sync.get(['leads']);
+    const result = await chrome.storage.local.get(['leads']);
     let leads = result.leads || [];
 
     const newLead = {
@@ -59,7 +59,7 @@ async function saveLead(leadData) {
     };
 
     leads.push(newLead);
-    await chrome.storage.sync.set({ leads });
+    await chrome.storage.local.set({ leads });
 
     // Reload leads to update the display
     await loadLeads();
@@ -220,11 +220,11 @@ async function deleteLead(leadId) {
   }
 
   try {
-    const result = await chrome.storage.sync.get(['leads']);
+    const result = await chrome.storage.local.get(['leads']);
     let leads = result.leads || [];
     leads = leads.filter(lead => lead.id !== leadId);
 
-    await chrome.storage.sync.set({ leads });
+    await chrome.storage.local.set({ leads });
     await loadLeads();
     console.log('[Connect Quick CRM] Lead deleted');
   } catch (error) {
@@ -239,7 +239,7 @@ async function clearAllLeads() {
   }
 
   try {
-    await chrome.storage.sync.set({ leads: [] });
+    await chrome.storage.local.set({ leads: [] });
     await loadLeads();
     console.log('[Connect Quick CRM] All leads cleared');
   } catch (error) {
@@ -367,7 +367,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Listen for storage changes
 chrome.storage.onChanged.addListener((changes, namespace) => {
-  if (namespace === 'sync' && changes.leads) {
+  if (namespace === 'local' && changes.leads) {
     loadLeads();
   }
 });
