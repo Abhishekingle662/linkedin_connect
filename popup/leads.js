@@ -123,6 +123,9 @@ function filterLeads(event) {
 
 // Show lead details in a modal
 function showLeadDetails(lead) {
+  // Close any existing modal first
+  closeLeadDetails();
+  
   const detailsHTML = `
     <div class="lead-details-modal">
       <div class="lead-details-content">
@@ -159,9 +162,9 @@ function showLeadDetails(lead) {
           <span class="detail-value">${escapeHtml(lead.notes)}</span>
         </div>
         ` : ''}
-        <button class="btn btn-primary" onclick="closeLeadDetails()">Close</button>
+        <button class="btn btn-primary close-lead-modal-btn">Close</button>
       </div>
-      <div class="lead-details-overlay" onclick="closeLeadDetails()"></div>
+      <div class="lead-details-overlay"></div>
     </div>
   `;
 
@@ -170,6 +173,36 @@ function showLeadDetails(lead) {
   modal.innerHTML = detailsHTML;
   modal.id = 'leadDetailsModal';
   document.body.appendChild(modal);
+
+  // Add event listeners for close actions
+  const closeBtn = modal.querySelector('.close-lead-modal-btn');
+  const overlay = modal.querySelector('.lead-details-overlay');
+  
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeLeadDetails();
+    }, { once: true });
+  }
+  
+  if (overlay) {
+    overlay.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeLeadDetails();
+    }, { once: true });
+  }
+
+  // Close the modal when profile link is clicked
+  const profileLink = modal.querySelector('.detail-link');
+  if (profileLink) {
+    profileLink.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Defer close slightly to allow the new tab to open
+      setTimeout(closeLeadDetails, 50);
+    }, { once: true });
+  }
 }
 
 // Close lead details modal

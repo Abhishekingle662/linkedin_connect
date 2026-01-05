@@ -14,12 +14,16 @@ const charCount = document.getElementById('charCount');
 const tabBtns = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 
+// LinkedIn Ops
+const LINKEDIN_BASE_URL = 'https://www.linkedin.com';
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   loadMessages();
   setupEventListeners();
   setupTabNavigation();
   initializeLeads(); // Initialize CRM leads
+  setupLinkedInOps();
 });
 
 // Setup tab navigation
@@ -249,4 +253,70 @@ function showNotification(message, type) {
   // For now, just log to console
   // In future, could add a toast notification UI
   console.log(`[${type.toUpperCase()}] ${message}`);
+}
+
+// LinkedIn Ops helpers
+function setupLinkedInOps() {
+  const copyButtons = document.querySelectorAll('[data-copy-target]');
+  copyButtons.forEach((btn) => {
+    const targetSelector = btn.getAttribute('data-copy-target');
+    if (!targetSelector) return;
+    btn.addEventListener('click', () => copyFromTarget(targetSelector));
+  });
+
+  const linkElements = document.querySelectorAll('[data-link]');
+  linkElements.forEach((el) => {
+    const path = el.getAttribute('data-link');
+    if (!path) return;
+    el.addEventListener('click', () => openLinkedInPath(path));
+  });
+}
+
+async function copyFromTarget(selector) {
+  const target = document.querySelector(selector);
+  if (!target) {
+    showNotification('Nothing to copy', 'error');
+    return;
+  }
+
+  const text = target.textContent.trim();
+  if (!text) {
+    showNotification('Nothing to copy', 'error');
+    return;
+  }
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      fallbackCopy(text);
+    }
+    showNotification('Copied to clipboard', 'success');
+  } catch (err) {
+    console.error('Copy failed:', err);
+    showNotification('Copy failed', 'error');
+  }
+}
+
+function fallbackCopy(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'absolute';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
+}
+
+function openLinkedInPath(path) {
+  if (!path) return;
+  const url = path.startsWith('http') ? path : `${LINKEDIN_BASE_URL}${path}`;
+  try {
+    chrome.tabs.create({ url });
+  } catch (error) {
+    console.error('Unable to open link:', error);
+    showNotification('Unable to open link', 'error');
+  }
 }

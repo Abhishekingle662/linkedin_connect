@@ -23,6 +23,10 @@
         <span class="tab-icon">👥</span>
         CRM (Leads)
       </button>
+      <button class="tab-btn" data-tab="linkedin-tab">
+        <span class="tab-icon">🔗</span>
+        LinkedIn Ops
+      </button>
     </div>
 
     <!-- Messages Tab -->
@@ -94,6 +98,200 @@
             <p>When you reach out to someone using Connect Quick, they'll appear here.</p>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- LinkedIn Operations Tab -->
+    <div id="linkedin-tab" class="tab-content">
+      <div class="ops-section">
+        <div class="ops-hero">
+          <div>
+            <p class="ops-kicker">LinkedIn execution playbook</p>
+            <h2>Stay visible. Apply smarter.</h2>
+            <p class="ops-subtitle">One-stop checklist, search shortcuts, and outreach template.</p>
+          </div>
+          <div class="ops-actions">
+            <button class="btn btn-primary copy-btn" data-copy-target="#ops-daily-rules-text">Copy Daily Rules</button>
+            <button class="btn btn-secondary copy-btn" data-copy-target="#ops-template-text">Copy DM Template</button>
+          </div>
+        </div>
+
+        <section class="play-section">
+          <div class="section-head">
+            <h3>🧠 Profile Optimization & Visibility</h3>
+            <button class="pill-btn copy-btn" data-copy-target="#ops-profile-text">Copy Checklist</button>
+          </div>
+          <ol class="checklist" id="ops-profile-list">
+            <li>Enable Open to Work (Recruiter only) — no green frame.</li>
+            <li class="with-link">Track profile views (free) <span class="link-pill" data-link="/me/profile-views/">/me/profile-views/</span></li>
+            <li>Post-application monitoring — check views 24 hours after each application.</li>
+            <li>Strategic skill reordering — move JD keywords into top 3 skills before applying.</li>
+            <li>Headline refresh signal — edit headline, wait 3 minutes, then submit application.</li>
+            <li>Shadow keyword test — search "[Your Name] + [Target Role]"; optimize if not discoverable.</li>
+            <li class="with-link">Resume classification test <span class="link-pill" data-link="/jobs/resume-builder/">/jobs/resume-builder/</span></li>
+            <li>Search imprint training — search target role titles daily.</li>
+            <li>Application throttling — max 5–7 quality applications/day.</li>
+          </ol>
+        </section>
+
+        <section class="play-section">
+          <div class="section-head">
+            <h3>🔎 Role-Specific</h3>
+          </div>
+          <div class="link-groups">
+            <div class="link-group">
+              <div class="link-row" data-link="/jobs/search/?keywords=graduate">Graduate roles</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="play-section">
+          <div class="section-head">
+            <h3>🧑‍💼 Recruiters & Decision Makers</h3>
+            <button class="pill-btn copy-btn" data-copy-target="#ops-recruiters-text">Copy People Searches</button>
+          </div>
+          <div class="link-groups">
+            <div class="link-group">
+              <p class="group-label">People Search</p>
+              <div class="link-row" data-link="/search/results/people/?keywords=recruiter">Recruiters</div>
+              <div class="link-row" data-link="/search/results/people/?keywords=campus%20recruiter">Campus recruiters</div>
+              <div class="link-row" data-link="/search/results/people/?keywords=early%20careers">Early career recruiters</div>
+              <div class="link-row" data-link="/search/results/people/?keywords=university%20relations">University relations</div>
+              <div class="link-row" data-link="/search/results/people/?keywords=talent%20acquisition">Talent acquisition</div>
+              <div class="link-row" data-link="/search/results/people/?keywords=people%20operations">People operations (hidden HR)</div>
+              <div class="link-row" data-link="/search/results/people/?keywords=hiring%20manager">Hiring managers</div>
+              <div class="link-row" data-link="/search/results/people/?keywords=engineering%20manager">Engineering managers</div>
+              <div class="link-row" data-link="/search/results/people/?keywords=team%20lead">Team leads</div>
+              <div class="link-row" data-link="/search/results/people/?keywords=founder">Startup founders</div>
+            </div>
+            <div class="link-group">
+              <p class="group-label">Company-Specific (replace COMPANY_ID)</p>
+              <div class="link-row" data-link="/search/results/people/?currentCompany=[COMPANY_ID]&keywords=recruiter">Recruiters at company</div>
+              <div class="link-row" data-link="/search/results/people/?currentCompany=[COMPANY_ID]&keywords=campus">Campus recruiters at company</div>
+              <div class="link-row" data-link="/search/results/people/?currentCompany=[COMPANY_ID]&keywords=manager">Hiring managers at company</div>
+            </div>
+          </div>
+          <p class="inline-tip">📌 Sort by Recent activity to find active hirers.</p>
+        </section>
+
+        <section class="play-section">
+          <div class="section-head">
+            <h3>🤝 Alumni & Network Leverage</h3>
+            <button class="pill-btn copy-btn" data-copy-target="#ops-alumni-text">Copy Alumni Searches</button>
+          </div>
+          <div class="link-groups">
+            <div class="link-group">
+              <div class="link-row" data-link="/search/results/people/?keywords=alumni%20recruiter">Alumni recruiters</div>
+              <div class="link-row" data-link="/search/results/people/?keywords=alumni&currentCompany=[COMPANY_ID]">Alumni at target company</div>
+              <div class="link-row" data-link="/search/results/people/?keywords=recent%20graduate">Recent graduates</div>
+              <div class="link-row" data-link="/search/results/people/?keywords=former%20intern">Former interns → full-time</div>
+              <div class="link-row" data-link="/search/results/people/?keywords=career%20transition">Career transitioners</div>
+              <div class="link-row" data-link="/search/results/people/?keywords=[job_title]">People in target role</div>
+            </div>
+          </div>
+          <p class="inline-tip">Filter by Past 1 year to target recent movers.</p>
+        </section>
+
+        <section class="play-section">
+          <div class="section-head">
+            <h3>📣 Hiring Posts (High Intent)</h3>
+            <button class="pill-btn copy-btn" data-copy-target="#ops-posts-text">Copy Post Searches</button>
+          </div>
+          <div class="link-groups">
+            <div class="link-group">
+              <div class="link-row" data-link="/search/results/content/?keywords=hiring%20intern">People posting about hiring</div>
+              <div class="link-row" data-link="/search/results/content/?keywords=internship%20opening">Internship opportunity sharers</div>
+              <div class="link-row" data-link="/search/results/content/?keywords=hiring%20and%20software%20engineer%20and%20us">Software engineer hiring in US</div>
+            </div>
+          </div>
+          <p class="inline-tip">Sort by Latest and engage within 12 hours.</p>
+        </section>
+
+        <section class="play-section">
+          <div class="section-head">
+            <h3>✉️ Cold Outreach DM Template</h3>
+            <button class="pill-btn copy-btn" data-copy-target="#ops-template-text">Copy Template</button>
+          </div>
+          <div class="template-card" id="ops-template">
+            <p class="template-label">Subject: Exploring [Team/Role] Opportunities at [Company]</p>
+            <p>Hi [First Name],</p>
+            <p>I came across your work in [team / hiring area] at [Company] and really liked [specific program, post, or initiative].</p>
+            <p>I’m actively exploring [internship / entry-level] roles in [field], with experience in [skill 1] and [skill 2]. I’d really value your perspective on what makes candidates successful on your team.</p>
+            <p>Would you be open to a brief chat?</p>
+            <p>Best,<br>[Your Name]</p>
+          </div>
+        </section>
+
+        <section class="play-section">
+          <div class="section-head">
+            <h3>⚡ Daily Execution Rules</h3>
+            <button class="pill-btn copy-btn" data-copy-target="#ops-daily-rules-text">Copy Rules</button>
+          </div>
+          <ul class="rule-list">
+            <li>Search + apply early (first 24 hrs)</li>
+            <li>Max 5–7 applications/day</li>
+            <li>DM 5–10 recruiters or hiring managers/day</li>
+            <li>Comment on 2 hiring posts/day</li>
+            <li>Check profile views daily</li>
+          </ul>
+        </section>
+
+        <!-- Hidden copy targets -->
+        <pre id="ops-profile-text" class="sr-only">Enable Open to Work (Recruiter only)
+Track profile views (free) /me/profile-views/
+Post-application monitoring — check views 24 hours after each application
+Strategic skill reordering — move JD keywords into top 3 skills before applying
+Headline refresh signal — edit headline, wait 3 minutes, then submit application
+Shadow keyword test — search "[Your Name] + [Target Role]"
+Resume classification test — /jobs/resume-builder/
+Search imprint training — search target role titles daily
+Application throttling — max 5–7 quality applications/day</pre>
+
+        <pre id="ops-searches-text" class="sr-only">Graduate roles: /jobs/search/?keywords=graduate</pre>
+
+        <pre id="ops-recruiters-text" class="sr-only">Recruiters: /search/results/people/?keywords=recruiter
+Campus recruiters: /search/results/people/?keywords=campus%20recruiter
+Early career recruiters: /search/results/people/?keywords=early%20careers
+University relations: /search/results/people/?keywords=university%20relations
+Talent acquisition: /search/results/people/?keywords=talent%20acquisition
+People operations: /search/results/people/?keywords=people%20operations
+Hiring managers: /search/results/people/?keywords=hiring%20manager
+Engineering managers: /search/results/people/?keywords=engineering%20manager
+Team leads: /search/results/people/?keywords=team%20lead
+Startup founders: /search/results/people/?keywords=founder
+Recruiters (company): /search/results/people/?currentCompany=[COMPANY_ID]&keywords=recruiter
+Campus recruiters (company): /search/results/people/?currentCompany=[COMPANY_ID]&keywords=campus
+Hiring managers (company): /search/results/people/?currentCompany=[COMPANY_ID]&keywords=manager</pre>
+
+        <pre id="ops-alumni-text" class="sr-only">Alumni recruiters: /search/results/people/?keywords=alumni%20recruiter
+Alumni at target company: /search/results/people/?keywords=alumni&currentCompany=[COMPANY_ID]
+Recent graduates: /search/results/people/?keywords=recent%20graduate
+Former interns → full-time: /search/results/people/?keywords=former%20intern
+Career transitioners: /search/results/people/?keywords=career%20transition
+People in target role: /search/results/people/?keywords=[job_title]</pre>
+
+        <pre id="ops-posts-text" class="sr-only">People posting about hiring: /search/results/content/?keywords=hiring%20intern
+Internship opportunity sharers: /search/results/content/?keywords=internship%20opening
+Software engineer hiring in US: /search/results/content/?keywords=hiring%20and%20software%20engineer%20and%20us</pre>
+
+        <pre id="ops-template-text" class="sr-only">Subject: Exploring [Team/Role] Opportunities at [Company]
+
+Hi [First Name],
+
+I came across your work in [team / hiring area] at [Company] and really liked [specific program, post, or initiative].
+
+I’m actively exploring [internship / entry-level] roles in [field], with experience in [skill 1] and [skill 2]. I’d really value your perspective on what makes candidates successful on your team.
+
+Would you be open to a brief chat?
+
+Best,
+[Your Name]</pre>
+
+        <pre id="ops-daily-rules-text" class="sr-only">Search + apply early (first 24 hrs)
+Max 5–7 applications/day
+DM 5–10 recruiters or hiring managers/day
+Comment on 2 hiring posts/day
+Check profile views daily</pre>
       </div>
     </div>
   </div>

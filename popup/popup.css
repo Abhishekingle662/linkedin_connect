@@ -19,15 +19,15 @@
 body {
   font-family: 'Poppins', system-ui, sans-serif;
   width: 400px;
-  max-height: 600px;
+  max-height: 700px;
   background: var(--bg);
   color: var(--text);
+  overflow-y: auto;
 }
 
 .container {
   display: flex;
   flex-direction: column;
-  height: 100%;
   background: var(--surface);
   border: 3px solid var(--border);
   border-radius: 12px;
@@ -163,6 +163,7 @@ header h1 {
 .messages-section {
   padding: 20px;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   background: var(--surface);
 }
@@ -323,7 +324,7 @@ header h1 {
   display: none;
   flex: 1;
   overflow-y: auto;
-  max-height: calc(600px - 180px);
+  min-height: 0;
 }
 
 .tab-content.active {
@@ -507,8 +508,9 @@ header h1 {
   right: 0;
   bottom: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 12px;
   z-index: 1000;
 }
 
@@ -520,6 +522,7 @@ header h1 {
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   cursor: pointer;
+  z-index: 1000;
 }
 
 .lead-details-content {
@@ -595,4 +598,207 @@ header h1 {
 
 body {
   max-height: 700px;
+}
+
+/* LinkedIn Ops */
+.ops-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: var(--surface);
+  min-height: 0;
+}
+
+.ops-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 3px solid var(--border);
+  border-radius: 12px;
+  background: var(--header);
+  box-shadow: var(--shadow);
+}
+
+.ops-hero h2 {
+  margin: 4px 0 6px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.ops-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.ops-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.ops-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.play-section {
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.pill-btn {
+  padding: 8px 12px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  background: var(--primary);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.checklist {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.with-link {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.link-pill {
+  padding: 4px 8px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--header);
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.1);
+}
+
+.link-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.link-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.group-label {
+  font-weight: 800;
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.link-row {
+  padding: 8px 10px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.12);
+}
+
+.link-row:hover,
+.link-pill:hover {
+  transform: translate(-1px, -1px);
+}
+
+.inline-tip {
+  font-size: 12px;
+  margin: 0;
+  font-weight: 700;
+}
+
+.template-card {
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--bg);
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: var(--shadow);
+}
+
+.template-label {
+  font-weight: 800;
+  margin: 0 0 8px;
+}
+
+.rule-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+@media (max-width: 420px) {
+  .ops-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ops-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .link-groups {
+    grid-template-columns: 1fr;
+  }
 }

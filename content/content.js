@@ -10,6 +10,7 @@ let fieldListenerAttached = false;
 let lastEditableField = null;
 let manualTriggerButton = null;
 let autoOpenSuppressed = false;
+let currentSelectorElement = null; // Track the current open selector
 const TEXT_INPUT_TYPES = new Set(['text', 'search', 'url', 'tel', 'email', 'number']);
 
 // Enable debug mode via console: window.connectQuickDebug = true
@@ -228,11 +229,14 @@ function showMessageSelector(targetElement, modalContext = null, options = {}) {
   const existingSelector = document.getElementById('cq-message-selector');
   if (existingSelector) {
     existingSelector.remove();
+    currentSelectorElement = null;
+    updateManualTriggerButtonText();
   }
 
   const selector = document.createElement('div');
   selector.id = 'cq-message-selector';
   selector.className = 'cq-selector';
+  currentSelectorElement = selector;
 
   const selectorContent = `
     <div class="cq-header">
@@ -254,6 +258,7 @@ function showMessageSelector(targetElement, modalContext = null, options = {}) {
 
   selector.innerHTML = selectorContent;
   document.body.appendChild(selector);
+  updateManualTriggerButtonText();
 
   const markSuppressed = () => {
     if (autoTriggered) {
@@ -266,6 +271,10 @@ function showMessageSelector(targetElement, modalContext = null, options = {}) {
     if (selector.parentElement) {
       selector.remove();
     }
+    if (currentSelectorElement === selector) {
+      currentSelectorElement = null;
+    }
+    updateManualTriggerButtonText();
     if (activeField === targetElement) {
       activeField = null;
     }
@@ -432,6 +441,16 @@ function initEditableFieldListener() {
 
 function handleManualTriggerClick(event) {
   event.preventDefault();
+  
+  // Check if selector is already open
+  if (currentSelectorElement && document.body.contains(currentSelectorElement)) {
+    // Close the selector
+    currentSelectorElement.remove();
+    currentSelectorElement = null;
+    updateManualTriggerButtonText();
+    return;
+  }
+
   if (messages.length === 0) {
     flashManualTrigger('No templates');
     return;
@@ -470,6 +489,18 @@ function flashManualTrigger(message) {
     manualTriggerButton.textContent = original;
     manualTriggerButton.disabled = false;
   }, 1400);
+}
+
+function updateManualTriggerButtonText() {
+  if (!manualTriggerButton) return;
+  const isSelectorOpen = currentSelectorElement && document.body.contains(currentSelectorElement);
+  if (isSelectorOpen) {
+    manualTriggerButton.innerText = 'Hide templates';
+    manualTriggerButton.title = 'Close Connect Quick message picker';
+  } else {
+    manualTriggerButton.innerText = 'Show templates';
+    manualTriggerButton.title = 'Open Connect Quick message picker';
+  }
 }
 
 function createManualTriggerButton() {

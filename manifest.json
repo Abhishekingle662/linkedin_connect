@@ -6,6 +6,7 @@
   "permissions": [
     "storage",
     "activeTab",
+    "tabs",
     "identity",
     "identity.getAuthorizationToken"
   ],
