@@ -60,10 +60,10 @@ function setupEventListeners() {
 // Update character count
 function updateCharCount() {
   const count = messageText.value.length;
-  charCount.textContent = `${count} / 300 characters`;
+  charCount.textContent = `${count} characters (300 for connection notes)`;
 
   if (count > 300) {
-    charCount.style.color = '#d32f2f';
+    charCount.style.color = '#ff9800'; // Over connection note limit but OK for DMs
   } else if (count > 250) {
     charCount.style.color = '#ff9800';
   } else {
@@ -132,11 +132,6 @@ async function handleAddOrUpdateMessage() {
 
   if (!name || !text) {
     showNotification('Please fill in both name and message', 'error');
-    return;
-  }
-
-  if (text.length > 300) {
-    showNotification('Message is too long (max 300 characters)', 'error');
     return;
   }
 
