@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "linkedin finder+connect",
   "short_name": "Auto-Note+",
-  "version": "2.1",
+  "version": "2.5",
   "description": "Auto-connects with personalized templates + finds hiring teams across LinkedIn, Greenhouse, Ashby, Wellfound, Lever, Workable, and Workday job postings!",
   "icons": {
     "16": "icons/icon16.png",

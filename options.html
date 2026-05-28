@@ -22,6 +22,25 @@
       .ghost { background:#f7f7f7; color:var(--fg); }
       .template-section { display:none; }
       .template-section.active { display:block; }
+      .lead-card { border-bottom: 1px solid var(--border); padding: 12px; transition: background 0.2s; }
+      .lead-card:last-child { border-bottom: none; }
+      .lead-card:hover { background: #f9f9f9; }
+      .lead-name { font-weight: 600; color: var(--fg); margin-bottom: 4px; }
+      .lead-company { color: var(--primary); font-size: 13px; margin-bottom: 4px; }
+      .lead-headline { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+      .lead-meta { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--muted); }
+      .lead-link { color: var(--primary); text-decoration: none; }
+      .lead-link:hover { text-decoration: underline; }
+      .empty-state { text-align: center; padding: 40px; color: var(--muted); font-style: italic; }
+      .template-library { margin-top: 12px; }
+      .template-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+      .template-form textarea { grid-column: 1 / -1; }
+      .template-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; background: #fafafa; }
+      .template-card h3 { margin: 0 0 8px; font-size: 1rem; }
+      .template-card textarea { margin-top: 8px; min-height: 90px; }
+      .template-card .template-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+      .template-card small { display: inline-block; margin-top: 4px; color: var(--muted); }
+      .template-notice { margin-top: 8px; font-size: 13px; color: var(--muted); min-height: 18px; }
     </style>
   </head>
   <body>
@@ -35,6 +54,37 @@
             <input type="checkbox" id="enabled" style="width:auto; margin-right:8px;" />
             <span>Enable extension</span>
           </label>
+        </div>
+        <small style="color: var(--muted); margin-top: 8px;">When enabled, the extension will automatically insert connection notes and messages on LinkedIn. Uncheck to temporarily disable without uninstalling.</small>
+      </section>
+
+      <section id="templateLibrarySection">
+        <h2>Template Library</h2>
+        <p style="margin-top:0; color: var(--muted);">Add custom templates for connection requests, DMs, or follow-ups. Saved templates sync to Chrome and are available from the in-page helper.</p>
+        <div class="template-library">
+          <div class="template-form">
+            <label>
+              <span>Template name</span>
+              <input type="text" id="templateTitle" placeholder="e.g. Warm intro for founders" />
+            </label>
+            <label>
+              <span>Type</span>
+              <select id="templateType">
+                <option value="connect">Connection note</option>
+                <option value="message">Direct message</option>
+                <option value="followup">Follow-up</option>
+              </select>
+            </label>
+            <label>
+              <span>Message</span>
+              <textarea id="templateBody" rows="4" placeholder="Hi {firstName}, congrats on..."></textarea>
+            </label>
+          </div>
+          <div class="actions" style="justify-content:flex-start;">
+            <button id="addTemplate" type="button">➕ Add Template</button>
+          </div>
+          <div id="templateNotice" class="template-notice"></div>
+          <div id="templateList"></div>
         </div>
       </section>
 
@@ -101,12 +151,33 @@ fancy a quick chat this week?</textarea>
             <span>Post-application follow-up</span>
             <textarea id="postApplicationFollowUp" rows="6" placeholder="Hi {firstName},&#10;&#10;I'm Abhishek, a New Grad SWE...">Hi {firstName},
 
-I'm Abhishek, a New Grad SWE. Just applied for the {role} at {company}. Given my background in [TOP DIFFERENTIATOR], I believe I'm a great fit to maybe join your team. What would be the best next steps to kick off this process?
-
+I'm Abhishek, a New Grad SWE. Deeply Interested in joining {company}. Hands-on with React/Node.js/Python/SQL + AI tools, and I care about speed, quality, and real usage. Could you guide me with next steps?
 Best,
 Abhishek</textarea>
-            <small><strong>Tokens:</strong> {firstName}, {company}, {role}<br>Replace [TOP DIFFERENTIATOR] with your relevant skills/experience</small>
+            <small><strong>Tokens:</strong> {firstName}, {company}<br>Concise, skill-focused follow-up for post-application outreach</small>
           </label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Saved Leads 
+          <span id="leadCount" style="display: inline-block; margin-left: 8px; padding: 2px 8px; background: #e8f4fd; color: var(--primary); border-radius: 12px; font-weight: 600; font-size: 12px;">0 leads</span>
+        </h2>
+        
+        <!-- Leads Table -->
+        <div id="leadsTableContainer" style="margin: 12px 0;">
+          <div id="leadsTable" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;">
+            <p style="text-align: center; padding: 40px; color: var(--muted);">
+              Loading leads...
+            </p>
+          </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
+          <button id="export" style="flex: 1; background: var(--primary); color: white;">📥 Export CSV</button>
+          <button id="testLead" style="flex: 1;" class="ghost">🧪 Test Save</button>
+          <button id="clearLeads" style="flex: 1;" class="ghost">🗑️ Clear All</button>
         </div>
       </section>
 
@@ -116,81 +187,6 @@ Abhishek</textarea>
       </footer>
     </main>
 
-    <script>
-      const STORAGE_KEY = 'linkedinAutoNote_settings';
-      
-      // Show/hide template sections based on dropdown selection
-      document.getElementById('templateSelector').addEventListener('change', function() {
-        const selected = this.value;
-        document.querySelectorAll('.template-section').forEach(section => {
-          section.classList.remove('active');
-        });
-        if (selected) {
-          const targetSection = document.getElementById(selected + '-section');
-          if (targetSection) {
-            targetSection.classList.add('active');
-          }
-        }
-      });
-      
-      function loadSettings() {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          try {
-            const settings = JSON.parse(saved);
-            document.getElementById('enabled').checked = settings.enabled !== false;
-            document.getElementById('recruiterTpl1').value = settings.recruiterTpl1 || "Hi {firstName}, I'm a recent CS grad passionate about scalable web & mobile systems. I'd love to connect and learn more about opportunities where I can contribute and grow.";
-            document.getElementById('recruiterTpl2').value = settings.recruiterTpl2 || "Hello {firstName}, I recently graduated in CS and have hands-on experience building production-level web & mobile apps. Excited to connect and stay on your radar for open roles.";
-            document.getElementById('alumniTemplate').value = settings.alumniTemplate || "Hi {firstName}, I'm a fellow IU alum and a recent CS grad focusing on SWE roles. I'm very interested in working at {company} and was wondering if you might be open to referring me. I'd greatly appreciate your help and would also love to hear about your experience there!";
-            document.getElementById('eliteMessageA').value = settings.eliteMessageA || "Hey {firstName}, LOVE what you're building at {company}. Would love to connect and stay in touch. \n~ Abhishek";
-            document.getElementById('eliteMessageB').value = settings.eliteMessageB || "Hey {firstName}, I'm Abhishek,\n- MS in CS\n- Expertise in Python, Javascript, AWS, React, SQL, etc.\n\nI'm quite interested in the SWE role.\n\nfancy a quick chat this week?";
-            document.getElementById('postApplicationFollowUp').value = settings.postApplicationFollowUp || "Hi {firstName},\n\nI'm Abhishek, a New Grad SWE. Just applied for the {role} at {company}. Given my background in [TOP DIFFERENTIATOR], I believe I'm a great fit to maybe join your team. What would be the best next steps to kick off this process?\n\nBest,\nAbhishek";
-          } catch (e) {
-            console.error('Failed to load settings:', e);
-          }
-        }
-      }
-      
-      function saveSettings() {
-        const settings = {
-          enabled: document.getElementById('enabled').checked,
-          recruiterTpl1: document.getElementById('recruiterTpl1').value.trim(),
-          recruiterTpl2: document.getElementById('recruiterTpl2').value.trim(),
-          alumniTemplate: document.getElementById('alumniTemplate').value.trim(),
-          eliteMessageA: document.getElementById('eliteMessageA').value.trim(),
-          eliteMessageB: document.getElementById('eliteMessageB').value.trim(),
-          postApplicationFollowUp: document.getElementById('postApplicationFollowUp').value.trim()
-        };
-        
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-          // Also sync to Chrome storage for extension access
-          if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.sync.set(settings);
-          }
-          alert('✅ Settings saved!');
-        } catch (e) {
-          console.error('Failed to save settings:', e);
-          alert('❌ Failed to save settings');
-        }
-      }
-      
-      function resetSettings() {
-        if (confirm('Reset all settings to defaults?')) {
-          localStorage.removeItem(STORAGE_KEY);
-          if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.sync.clear();
-          }
-          location.reload();
-        }
-      }
-      
-      // Load on page load
-      window.addEventListener('DOMContentLoaded', loadSettings);
-      
-      // Bind buttons
-      document.getElementById('save').addEventListener('click', saveSettings);
-      document.getElementById('reset').addEventListener('click', resetSettings);
-    </script>
+    <script src="options-page.js"></script>
   </body>
 </html>

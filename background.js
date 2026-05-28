@@ -1,4 +1,37 @@
 // Background (service worker)
+const DEFAULT_TEMPLATE_LIBRARY = [
+  {
+    id: 'connect_recruiter_a',
+    type: 'connect',
+    title: 'Connect — Recruiter 1',
+    body: "Hi {firstName}, I'm a recent CS grad passionate about scalable web & mobile systems. I'd love to connect and learn more about opportunities where I can contribute and grow."
+  },
+  {
+    id: 'connect_recruiter_b',
+    type: 'connect',
+    title: 'Connect — Recruiter 2',
+    body: 'Hello {firstName}, I recently graduated in CS and have hands-on experience building production-level web & mobile apps. Excited to connect and stay on your radar for open roles.'
+  },
+  {
+    id: 'connect_alumni_default',
+    type: 'connect',
+    title: 'Connect — Alumni',
+    body: "Hi {firstName}, I'm a fellow IU alum and a recent CS grad focusing on SWE roles. I'm very interested in working at {company} and was wondering if you might be open to referring me. I'd greatly appreciate your help and would also love to hear about your experience there!"
+  },
+  {
+    id: 'message_primary',
+    type: 'message',
+    title: 'Message — Primary',
+    body: "Hi {firstName}, great to connect here! I’m a new‑grad SWE focused on full‑stack/ML. Would love a quick chat about {company} — open to a brief call?"
+  },
+  {
+    id: 'followup_post_application',
+    type: 'followup',
+    title: 'Follow-up — Post Application',
+    body: "Hi {firstName},\n\nI'm Abhishek, a New Grad SWE. Deeply Interested in joining {company}. Hands-on with React/Node.js/Python/SQL + AI tools, and I care about speed, quality, and real usage. Could you guide me with next steps?\nBest,\nAbhishek"
+  }
+];
+
 const DEFAULTS = {
   enabled: true,
   // Connect
@@ -14,10 +47,11 @@ const DEFAULTS = {
   eliteMessageA: "Hey {firstName}, LOVE what you're building at {company}. Would love to connect and stay in touch. \n~ Abhishek",
   eliteMessageB: "Hey {firstName}, I'm Abhishek,\n- MS in CS\n- Expertise in Python, Javascript, AWS, React, SQL, etc.\n\nI'm quite interested in the SWE role.\n\nfancy a quick chat this week?",
   // Post-application follow-up
-  postApplicationFollowUp: "Hi {firstName},\n\nI'm Abhishek, a New Grad SWE. Just applied for the {role} at {company}. Given my background in [TOP DIFFERENTIATOR], I believe I'm a great fit to maybe join your team. What would be the best next steps to kick off this process?\n\nBest,\nAbhishek",
+  postApplicationFollowUp: "Hi {firstName},\n\nI'm Abhishek, a New Grad SWE. Deeply Interested in joining {company}. Hands-on with React/Node.js/Python/SQL + AI tools, and I care about speed, quality, and real usage. Could you guide me with next steps?\nBest,\nAbhishek",
   // Message mode (for backwards compatibility)
   messageFlowEnabled: true,
-  messageAutoSend: false
+  messageAutoSend: false,
+  templateLibrary: DEFAULT_TEMPLATE_LIBRARY
 };
 
 const METRICS_KEY = 'metrics_v1';
@@ -56,7 +90,11 @@ async function migrateTemplates() {
     if (!curAlumni || /\[[^\]]+\]/.test(curAlumni) || /I am an IU alum and I am connecting/.test(curAlumni)) {
       patch.alumniTemplate = DEFAULTS.alumniTemplate;
     }
-    
+
+    if (!Array.isArray(sync.templateLibrary)) {
+      patch.templateLibrary = DEFAULT_TEMPLATE_LIBRARY;
+    }
+
     if (Object.keys(patch).length) await chrome.storage.sync.set(patch);
   } catch { /* noop */ }
 }

@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
   const DEFAULTS = {
     enabled: true,
     // Connect
@@ -16,7 +16,13 @@
     messageAutoSend: false,
     messageTemplate: "Hi {firstName}, great to connect here! I’m a new‑grad SWE focused on full‑stack/ML. Would love a quick chat about {company} — open to a brief call?",
     // Alumni template
-    alumniTemplate: "Hi {firstName}, I’m a fellow IU alum and a recent CS grad focusing on SWE roles. I’m very interested in {company} and was wondering if you might be open to referring me. I’d greatly appreciate your help and would also love to hear about your experience there!"
+    alumniTemplate: "Hi {firstName}, I’m a fellow IU alum and a recent CS grad focusing on SWE roles. I’m very interested in {company} and was wondering if you might be open to referring me. I’d greatly appreciate your help and would also love to hear about your experience there!",
+    // 0.1% Elite messages
+    eliteMessageA: "Hey {firstName}, LOVE what you're building at {company}. Would love to connect and stay in touch. \n~ Abhishek",
+    eliteMessageB: "Hey {firstName}, I'm Abhishek,\n- MS in CS\n- Expertise in Python, Javascript, AWS, React, SQL, etc.\n\nI'm quite interested in the SWE role.\n\nfancy a quick chat this week?",
+    // Post-application follow-up
+    postApplicationFollowUp: "Hi {firstName},\n\nI'm Abhishek, a New Grad SWE. Deeply Interested in joining {company}. Hands-on with React/Node.js/Python/SQL + AI tools, and I care about speed, quality, and real usage. Could you guide me with next steps?\nBest,\nAbhishek",
+    templateLibrary: []
   };
 
   let settings = { ...DEFAULTS };
@@ -42,6 +48,9 @@ fancy a quick chat this week?`
   const debounce = (fn, wait) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), wait); }; };
   const clean = (s='') => s.replace(/\s+/g, ' ').trim();
   const textOf = (sel) => clean(document.querySelector(sel)?.textContent || '');
+  const getTemplateLibrary = () => Array.isArray(settings.templateLibrary) ? settings.templateLibrary : [];
+  const findLibraryTemplate = (id='') => getTemplateLibrary().find(t => t?.id === id);
+  const getLibraryTemplatesByType = (type='') => getTemplateLibrary().filter(t => (t?.type || '').toLowerCase() === type.toLowerCase() && (t?.body || '').trim().length);
   
   // Debug helper - expose globally for console testing
   window.AutoNoteDebug = {
@@ -283,6 +292,10 @@ fancy a quick chat this week?`
       <button data-act="alumni" title="Insert alumni template">Alumni</button>
       <button data-act="elite" title="Toggle between Elite A/B templates">Elite A</button>
       <button data-act="postApp" title="Insert post-application follow-up">Follow-up</button>
+      <select data-act="librarySelect" title="Insert a saved template" style="min-width:160px;background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:6px;">
+        <option value="">Saved templates…</option>
+      </select>
+      <button data-act="libraryInsert" title="Insert selected saved template">Library</button>
       <button data-act="send" style="background:#222;border:1px solid #222;margin-left:4px;" title="Send current message">✓ Send</button>
     `;
     Object.assign(bar.style, { position:'fixed', right:'12px', bottom:'140px', zIndex:2147483647, display:'flex', gap:'6px', background:'linear-gradient(135deg, #222, #333)', borderRadius:'8px', padding:'10px 12px', boxShadow:'0 4px 12px rgba(0,0,0,0.2)', alignItems:'center', border:'1px solid rgba(255,255,255,0.1)' });
@@ -314,6 +327,17 @@ fancy a quick chat this week?`
       });
     });
     document.body.appendChild(bar);
+
+    const librarySelect = bar.querySelector('select[data-act="librarySelect"]');
+    const libraryInsertBtn = bar.querySelector('button[data-act="libraryInsert"]');
+    const connectLibraryTemplates = getLibraryTemplatesByType('connect');
+    if (connectLibraryTemplates.length) {
+      const opts = ['<option value="">Saved templates…</option>', ...connectLibraryTemplates.map(t => `<option value="${t.id}">${escapeHtml(t.title || 'Saved template')}</option>`)];
+      librarySelect.innerHTML = opts.join('');
+    } else {
+      librarySelect.style.display = 'none';
+      libraryInsertBtn.style.display = 'none';
+    }
 
     // Track toggle states
     let recruiterIdx = 0; // 0 or 1 for recruiterTpl1/2
@@ -355,6 +379,12 @@ fancy a quick chat this week?`
       } 
       else if (act === 'postApp') {
         tpl = settings.postApplicationFollowUp || DEFAULTS.postApplicationFollowUp;
+      }
+      else if (act === 'libraryInsert') {
+        const sel = bar.querySelector('select[data-act="librarySelect"]');
+        const tplId = sel?.value;
+        const saved = tplId ? findLibraryTemplate(tplId) : null;
+        tpl = saved?.body || '';
       }
       else if (act === 'send') {
         // Send current message
@@ -453,18 +483,23 @@ fancy a quick chat this week?`
       <button data-act="cycle" title="Switch template">Message</button>
   <button data-act="ckMsg" title="Insert CK 0.1% template (toggles A/B)">0.1% A</button>
       <button data-act="insertSelected" title="Insert selected template">Insert Selected</button>
-      <select data-act="followSel" style="margin-left:8px;background:#0a66c2;color:#fff;border:0;border-radius:8px;padding:6px;">
-        <option value="">Follow-up…</option>
-        <option value="followUpAcceptedAlumni">Accepted — Alumni</option>
-        <option value="followUpAcceptedRecruiter">Accepted — Recruiter/HM</option>
-        <option value="followUpPendingAlumni">Pending — Alumni</option>
-        <option value="followUpPendingRecruiter">Pending — Recruiter/HM</option>
-      </select>
+      <select data-act="followSel" style="margin-left:8px;background:#0a66c2;color:#fff;border:0;border-radius:8px;padding:6px;"></select>
       <button data-act="insertFollow">Insert Follow-up</button>
     `;
     Object.assign(bar.style, { position: 'fixed', right: '12px', bottom: '90px', zIndex: 2147483647, display: 'flex', gap: '8px', background: '#0f1116', borderRadius: '12px', padding: '8px', boxShadow: '0 10px 30px rgba(0,0,0,.35)' });
     Array.from(bar.querySelectorAll('button')).forEach(btn => { Object.assign(btn.style, { border: 0, borderRadius: '10px', padding: '8px 10px', background: '#0a66c2', color: '#fff', cursor: 'pointer' }); });
     document.body.appendChild(bar);
+    const followSelect = bar.querySelector('select[data-act="followSel"]');
+    const followOptions = [
+      { value: '', label: 'Follow-up…' },
+      { value: 'followUpAcceptedAlumni', label: 'Accepted — Alumni' },
+      { value: 'followUpAcceptedRecruiter', label: 'Accepted — Recruiter/HM' },
+      { value: 'followUpPendingAlumni', label: 'Pending — Alumni' },
+      { value: 'followUpPendingRecruiter', label: 'Pending — Recruiter/HM' }
+    ];
+    const savedFollowUps = getLibraryTemplatesByType('followup');
+    savedFollowUps.forEach(t => followOptions.push({ value: `tpl:${t.id}`, label: `Saved — ${t.title || 'Template'}` }));
+    followSelect.innerHTML = followOptions.map(opt => `<option value="${opt.value}">${escapeHtml(opt.label)}</option>`).join('');
 
     // Build template list
     const templateOptions = [];
@@ -478,6 +513,10 @@ fancy a quick chat this week?`
         if (body) templateOptions.push({ key: `custom${idx+1}`, label: title || `Custom ${idx+1}`, get: () => body });
       });
     }
+    const libraryMessageTemplates = getLibraryTemplatesByType('message');
+    libraryMessageTemplates.forEach(t => {
+      templateOptions.push({ key: `library:${t.id}`, label: (t.title || 'Saved template'), get: () => t.body });
+    });
   let currentIdx = 0;
   let ckIdxMsg = 0; // 0 => A, 1 => B
     const getSelectedTemplateText = () => templateOptions[currentIdx]?.get?.() || settings.messageTemplate;
@@ -521,7 +560,13 @@ fancy a quick chat this week?`
       if (act === 'insertFollow') {
         const sel = bar.querySelector('select[data-act="followSel"]');
         const key = sel?.value || '';
-        const txt = key && settings[key] ? settings[key] : '';
+        let txt = '';
+        if (key.startsWith('tpl:')) {
+          const saved = findLibraryTemplate(key.slice(4));
+          txt = saved?.body || '';
+        } else if (key && settings[key]) {
+          txt = settings[key];
+        }
         if (txt) {
           const filled = fillTemplate(txt, { ...extractProfileContext(), firstName: extractFirstNameNear(composer), company: extractCompanyNear(composer) });
           insertIntoComposer(composer, filled);
@@ -538,9 +583,38 @@ fancy a quick chat this week?`
   // Lead log
   function currentProfileUrl(){ return location.href.split('?')[0]; }
   async function saveLead(entry){
-    console.log('[AutoNote] Saving lead:', entry); // Debug log
-    const { leads = [] } = await chrome.storage.local.get('leads');
-    leads.push(entry); await chrome.storage.local.set({ leads });
+    try {
+      console.log('[AutoNote] 💾 Saving lead:', entry);
+      
+      // Validate entry
+      if (!entry || !entry.name) {
+        console.warn('[AutoNote] ⚠️ Invalid lead entry - missing name');
+        return;
+      }
+      
+      // Get current leads
+      const result = await chrome.storage.local.get('leads');
+      const leads = result.leads || [];
+      console.log('[AutoNote] 📊 Current leads count:', leads.length);
+      
+      // Add new lead
+      leads.push(entry);
+      
+      // Save back to storage
+      await chrome.storage.local.set({ leads });
+      console.log('[AutoNote] ✅ Lead saved! Total leads:', leads.length);
+      
+      // Verify it saved
+      const verification = await chrome.storage.local.get('leads');
+      if (verification.leads && verification.leads.length === leads.length) {
+        console.log('[AutoNote] ✅ Verified - storage updated successfully');
+      } else {
+        console.error('[AutoNote] ❌ Verification failed - storage mismatch');
+      }
+    } catch (error) {
+      console.error('[AutoNote] ❌ Error saving lead:', error);
+      console.error('[AutoNote] ❌ Error details:', error.message, error.stack);
+    }
   }
 
   // —— Handlers ——
@@ -555,14 +629,20 @@ fancy a quick chat this week?`
       const textarea = await ensureNoteEditorOpen();
       // Select template according to user preference
       let baseTpl;
-      switch ((settings.defaultConnectTemplate || 'audience')) {
-        case 'alumni': baseTpl = settings.alumniTemplate || pickAudienceTemplate(ctx); break;
-        case 'referral': baseTpl = settings.referralTemplate || pickAudienceTemplate(ctx); break;
-        case 'message': baseTpl = settings.messageTemplate || pickAudienceTemplate(ctx); break;
-        case 'custom1': baseTpl = settings.customTemplates?.[0]?.body || pickAudienceTemplate(ctx); break;
-        case 'custom2': baseTpl = settings.customTemplates?.[1]?.body || pickAudienceTemplate(ctx); break;
-        case 'custom3': baseTpl = settings.customTemplates?.[2]?.body || pickAudienceTemplate(ctx); break;
-        default: baseTpl = await nextRecruiterTemplate();
+      const defaultChoice = settings.defaultConnectTemplate || 'audience';
+      if (defaultChoice.startsWith('template:')) {
+        const saved = findLibraryTemplate(defaultChoice.slice(9));
+        baseTpl = saved?.body || pickAudienceTemplate(ctx);
+      } else {
+        switch (defaultChoice) {
+          case 'alumni': baseTpl = settings.alumniTemplate || pickAudienceTemplate(ctx); break;
+          case 'referral': baseTpl = settings.referralTemplate || pickAudienceTemplate(ctx); break;
+          case 'message': baseTpl = settings.messageTemplate || pickAudienceTemplate(ctx); break;
+          case 'custom1': baseTpl = settings.customTemplates?.[0]?.body || pickAudienceTemplate(ctx); break;
+          case 'custom2': baseTpl = settings.customTemplates?.[1]?.body || pickAudienceTemplate(ctx); break;
+          case 'custom3': baseTpl = settings.customTemplates?.[2]?.body || pickAudienceTemplate(ctx); break;
+          default: baseTpl = await nextRecruiterTemplate();
+        }
       }
   const variant = '';
   const message = capLinkedInLimit(fillTemplate(baseTpl, ctx));
